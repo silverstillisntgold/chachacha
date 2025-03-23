@@ -139,24 +139,22 @@ impl Machine for Matrix {
     #[inline]
     fn increment_djb(&mut self) {
         unsafe {
-            self.state[0][3] = _mm_add_epi64(self.state[0][3], _mm_set_epi64x(0, DEPTH_U8.into()));
-            self.state[1][3] = _mm_add_epi64(self.state[1][3], _mm_set_epi64x(0, DEPTH_U8.into()));
-            self.state[2][3] = _mm_add_epi64(self.state[2][3], _mm_set_epi64x(0, DEPTH_U8.into()));
-            self.state[3][3] = _mm_add_epi64(self.state[3][3], _mm_set_epi64x(0, DEPTH_U8.into()));
+            let increment = _mm_set_epi64x(0, DEPTH as i64);
+            self.state[0][3] = _mm_add_epi64(self.state[0][3], increment);
+            self.state[1][3] = _mm_add_epi64(self.state[1][3], increment);
+            self.state[2][3] = _mm_add_epi64(self.state[2][3], increment);
+            self.state[3][3] = _mm_add_epi64(self.state[3][3], increment);
         }
     }
 
     #[inline]
     fn increment_ietf(&mut self) {
         unsafe {
-            self.state[0][3] =
-                _mm_add_epi32(self.state[0][3], _mm_set_epi32(0, 0, 0, DEPTH_U8.into()));
-            self.state[1][3] =
-                _mm_add_epi32(self.state[1][3], _mm_set_epi32(0, 0, 0, DEPTH_U8.into()));
-            self.state[2][3] =
-                _mm_add_epi32(self.state[2][3], _mm_set_epi32(0, 0, 0, DEPTH_U8.into()));
-            self.state[3][3] =
-                _mm_add_epi32(self.state[3][3], _mm_set_epi32(0, 0, 0, DEPTH_U8.into()));
+            let increment = _mm_set_epi32(0, 0, 0, DEPTH as i32);
+            self.state[0][3] = _mm_add_epi32(self.state[0][3], increment);
+            self.state[1][3] = _mm_add_epi32(self.state[1][3], increment);
+            self.state[2][3] = _mm_add_epi32(self.state[2][3], increment);
+            self.state[3][3] = _mm_add_epi32(self.state[3][3], increment);
         }
     }
 }

@@ -104,28 +104,22 @@ impl Machine for Matrix {
     #[inline]
     fn increment_djb(&mut self) {
         unsafe {
-            self.state[0].rows[3].u64x2[0] =
-                self.state[0].rows[3].u64x2[0].wrapping_add(DEPTH_U8.into());
-            self.state[1].rows[3].u64x2[0] =
-                self.state[1].rows[3].u64x2[0].wrapping_add(DEPTH_U8.into());
-            self.state[2].rows[3].u64x2[0] =
-                self.state[2].rows[3].u64x2[0].wrapping_add(DEPTH_U8.into());
-            self.state[3].rows[3].u64x2[0] =
-                self.state[3].rows[3].u64x2[0].wrapping_add(DEPTH_U8.into());
+            let increment = DEPTH as u64;
+            self.state[0].rows[3].u64x2[0] = self.state[0].rows[3].u64x2[0].wrapping_add(increment);
+            self.state[1].rows[3].u64x2[0] = self.state[1].rows[3].u64x2[0].wrapping_add(increment);
+            self.state[2].rows[3].u64x2[0] = self.state[2].rows[3].u64x2[0].wrapping_add(increment);
+            self.state[3].rows[3].u64x2[0] = self.state[3].rows[3].u64x2[0].wrapping_add(increment);
         }
     }
 
     #[inline]
     fn increment_ietf(&mut self) {
         unsafe {
-            self.state[0].rows[3].u32x4[0] =
-                self.state[0].rows[3].u32x4[0].wrapping_add(DEPTH_U8.into());
-            self.state[1].rows[3].u32x4[0] =
-                self.state[1].rows[3].u32x4[0].wrapping_add(DEPTH_U8.into());
-            self.state[2].rows[3].u32x4[0] =
-                self.state[2].rows[3].u32x4[0].wrapping_add(DEPTH_U8.into());
-            self.state[3].rows[3].u32x4[0] =
-                self.state[3].rows[3].u32x4[0].wrapping_add(DEPTH_U8.into());
+            let increment = DEPTH as u32;
+            self.state[0].rows[3].u32x4[0] = self.state[0].rows[3].u32x4[0].wrapping_add(increment);
+            self.state[1].rows[3].u32x4[0] = self.state[1].rows[3].u32x4[0].wrapping_add(increment);
+            self.state[2].rows[3].u32x4[0] = self.state[2].rows[3].u32x4[0].wrapping_add(increment);
+            self.state[3].rows[3].u32x4[0] = self.state[3].rows[3].u32x4[0].wrapping_add(increment);
         }
     }
 }

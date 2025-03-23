@@ -16,9 +16,7 @@ pub const BUF_LEN: usize = CHACHA_SIZE * WIDTH * (size_of::<u32>() / size_of::<u
 /// Since we process in chunks of 4, the counter of the base
 /// ChaCha instance needs to be incremented by 4.
 pub const DEPTH: usize = 4;
-pub const DEPTH_U8: u8 = DEPTH as u8;
 pub const WIDTH: usize = 4;
-
 pub const CHACHA_SEED_LEN: usize = 3 * size_of::<Row>();
 
 /// Defines the interface that concrete implementations needed to
