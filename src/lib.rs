@@ -85,48 +85,16 @@ TODO
 #[cfg(test)]
 mod chacha_reference;
 
+mod backends;
 mod chacha;
 mod rounds;
-mod soft;
 mod util;
 mod variations;
 
 use self::chacha::ChaCha;
-use cfg_if::cfg_if;
+use backends::Matrix;
 use rounds::*;
 use variations::*;
-
-cfg_if! {
-    if #[cfg(any(target_arch = "x86_64", target_arch = "x86"))] {
-        #[cfg(feature = "nightly")]
-        mod avx512;
-        mod avx2;
-        mod sse2;
-
-        cfg_if! {
-            if #[cfg(all(feature = "nightly", target_feature = "avx512f"))] {
-                use avx512::Matrix;
-            } else if #[cfg(target_feature = "avx2")] {
-                use avx2::Matrix;
-            } else if #[cfg(target_feature = "sse2")] {
-                use sse2::Matrix;
-            } else {
-                compile_error!(
-                    "building programs on x86 without support for sse2 may introduce undefined behavior"
-                );
-            }
-        }
-    // NEON on ARM32 is both unsound and gated behind nightly.
-    } else if #[cfg(all(
-        target_feature = "neon",
-        any(target_arch = "aarch64", target_arch = "arm64ec")
-    ))] {
-        mod neon;
-        use neon::Matrix;
-    } else {
-        use soft::Matrix;
-    }
-}
 
 pub type ChaCha8Ietf = ChaCha<Matrix, R8, Ietf>;
 pub type ChaCha12Ietf = ChaCha<Matrix, R12, Ietf>;
@@ -140,6 +108,7 @@ pub type ChaCha20Djb = ChaCha<Matrix, R20, Djb>;
 // WHEN THE REFERENCE IMPLEMENTATION ALSO PASSES ALL ITS TESTS.
 #[cfg(test)]
 mod tests {
+    use super::backends::*;
     use super::chacha_reference::ChaCha as ChaChaRef;
     use super::util::*;
     use super::*;
