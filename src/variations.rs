@@ -1,5 +1,9 @@
 pub enum Variants {
+    /// Original variant proposed by the author of the salsa
+    /// and chacha algorithms: Daniel J. Bernstein.
     Djb,
+    /// Alternative variation specified by the IETF, most often
+    /// used in conjunction with Poly1305.
     Ietf,
 }
 

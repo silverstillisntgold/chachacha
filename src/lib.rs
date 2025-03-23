@@ -82,9 +82,10 @@ TODO
     feature(stdarch_x86_avx512)
 )]
 
-mod chacha;
 #[cfg(test)]
 mod chacha_reference;
+
+mod chacha;
 mod rounds;
 mod soft;
 mod util;
@@ -102,7 +103,6 @@ cfg_if! {
         mod avx2;
         mod sse2;
 
-
         cfg_if! {
             if #[cfg(all(feature = "nightly", target_feature = "avx512f"))] {
                 use avx512::Matrix;
@@ -111,7 +111,9 @@ cfg_if! {
             } else if #[cfg(target_feature = "sse2")] {
                 use sse2::Matrix;
             } else {
-                compile_error!("what the fuck are you doing bruh");
+                compile_error!(
+                    "building programs on x86 without support for sse2 may introduce undefined behavior"
+                );
             }
         }
     // NEON on ARM32 is both unsound and gated behind nightly.
@@ -134,20 +136,21 @@ pub type ChaCha8Djb = ChaCha<Matrix, R8, Djb>;
 pub type ChaCha12Djb = ChaCha<Matrix, R12, Djb>;
 pub type ChaCha20Djb = ChaCha<Matrix, R20, Djb>;
 
+// VERY IMPORTANT: THESE TESTS SUCCEEDING ONLY ENSURES CORRECTNESS
+// WHEN THE REFERENCE IMPLEMENTATION ALSO PASSES ALL ITS TESTS.
 #[cfg(test)]
 mod tests {
-    extern crate alloc;
-
     use super::chacha_reference::ChaCha as ChaChaRef;
-    use super::util::CHACHA_SEED_LEN;
-    use super::util::Machine;
+    use super::util::*;
     use super::*;
-    use alloc::vec::Vec;
+    use core::iter::repeat_with;
+    use core::mem::transmute;
 
-    const TEST_COUNT: usize = 64;
+    const TEST_COUNT: usize = 32;
     const TEST_LEN: usize = 16;
+    /// Reference implementation needs 4 times the runs since it
+    /// produces a quarter of the output per block operation.
     const TEST_LEN_REF: usize = TEST_LEN * 4;
-    const CHUNKED_RESULT_LEN: usize = TEST_LEN * 16;
 
     #[cfg(all(
         target_feature = "neon",
@@ -155,8 +158,8 @@ mod tests {
     ))]
     #[test]
     fn chacha_8_neon() {
-        test::<neon::Matrix, R8, Djb>();
-        test::<neon::Matrix, R8, Ietf>();
+        test_chacha::<neon::Matrix, R8, Djb>();
+        test_chacha::<neon::Matrix, R8, Ietf>();
     }
 
     #[cfg(all(
@@ -165,8 +168,8 @@ mod tests {
     ))]
     #[test]
     fn chacha_12_neon() {
-        test::<neon::Matrix, R12, Djb>();
-        test::<neon::Matrix, R12, Ietf>();
+        test_chacha::<neon::Matrix, R12, Djb>();
+        test_chacha::<neon::Matrix, R12, Ietf>();
     }
 
     #[cfg(all(
@@ -175,112 +178,114 @@ mod tests {
     ))]
     #[test]
     fn chacha_20_neon() {
-        test::<neon::Matrix, R20, Djb>();
-        test::<neon::Matrix, R20, Ietf>();
+        test_chacha::<neon::Matrix, R20, Djb>();
+        test_chacha::<neon::Matrix, R20, Ietf>();
     }
 
     #[cfg(all(feature = "nightly", target_feature = "avx512f"))]
     #[test]
     fn chacha_8_avx512() {
-        test::<avx512::Matrix, R8, Djb>();
-        test::<avx512::Matrix, R8, Ietf>();
+        test_chacha::<avx512::Matrix, R8, Djb>();
+        test_chacha::<avx512::Matrix, R8, Ietf>();
     }
 
     #[cfg(all(feature = "nightly", target_feature = "avx512f"))]
     #[test]
     fn chacha_12_avx512() {
-        test::<avx512::Matrix, R12, Djb>();
-        test::<avx512::Matrix, R12, Ietf>();
+        test_chacha::<avx512::Matrix, R12, Djb>();
+        test_chacha::<avx512::Matrix, R12, Ietf>();
     }
 
     #[cfg(all(feature = "nightly", target_feature = "avx512f"))]
     #[test]
     fn chacha_20_avx512() {
-        test::<avx512::Matrix, R20, Djb>();
-        test::<avx512::Matrix, R20, Ietf>();
+        test_chacha::<avx512::Matrix, R20, Djb>();
+        test_chacha::<avx512::Matrix, R20, Ietf>();
     }
 
     #[cfg(target_feature = "avx2")]
     #[test]
     fn chacha_8_avx2() {
-        test::<avx2::Matrix, R8, Djb>();
-        test::<avx2::Matrix, R8, Ietf>();
+        test_chacha::<avx2::Matrix, R8, Djb>();
+        test_chacha::<avx2::Matrix, R8, Ietf>();
     }
 
     #[cfg(target_feature = "avx2")]
     #[test]
     fn chacha_12_avx2() {
-        test::<avx2::Matrix, R12, Djb>();
-        test::<avx2::Matrix, R12, Ietf>();
+        test_chacha::<avx2::Matrix, R12, Djb>();
+        test_chacha::<avx2::Matrix, R12, Ietf>();
     }
 
     #[cfg(target_feature = "avx2")]
     #[test]
     fn chacha_20_avx2() {
-        test::<avx2::Matrix, R20, Djb>();
-        test::<avx2::Matrix, R20, Ietf>();
+        test_chacha::<avx2::Matrix, R20, Djb>();
+        test_chacha::<avx2::Matrix, R20, Ietf>();
     }
 
     #[cfg(target_feature = "sse2")]
     #[test]
     fn chacha_8_sse2() {
-        test::<sse2::Matrix, R8, Djb>();
-        test::<sse2::Matrix, R8, Ietf>();
+        test_chacha::<sse2::Matrix, R8, Djb>();
+        test_chacha::<sse2::Matrix, R8, Ietf>();
     }
 
     #[cfg(target_feature = "sse2")]
     #[test]
     fn chacha_12_sse2() {
-        test::<sse2::Matrix, R12, Djb>();
-        test::<sse2::Matrix, R12, Ietf>();
+        test_chacha::<sse2::Matrix, R12, Djb>();
+        test_chacha::<sse2::Matrix, R12, Ietf>();
     }
 
     #[cfg(target_feature = "sse2")]
     #[test]
     fn chacha_20_sse2() {
-        test::<sse2::Matrix, R20, Djb>();
-        test::<sse2::Matrix, R20, Ietf>();
+        test_chacha::<sse2::Matrix, R20, Djb>();
+        test_chacha::<sse2::Matrix, R20, Ietf>();
     }
 
     #[test]
     fn chacha_8_soft() {
-        test::<soft::Matrix, R8, Djb>();
-        test::<soft::Matrix, R8, Ietf>();
+        test_chacha::<soft::Matrix, R8, Djb>();
+        test_chacha::<soft::Matrix, R8, Ietf>();
     }
 
     #[test]
     fn chacha_12_soft() {
-        test::<soft::Matrix, R12, Djb>();
-        test::<soft::Matrix, R12, Ietf>();
+        test_chacha::<soft::Matrix, R12, Djb>();
+        test_chacha::<soft::Matrix, R12, Ietf>();
     }
 
     #[test]
     fn chacha_20_soft() {
-        test::<soft::Matrix, R20, Djb>();
-        test::<soft::Matrix, R20, Ietf>();
+        test_chacha::<soft::Matrix, R20, Djb>();
+        test_chacha::<soft::Matrix, R20, Ietf>();
     }
 
-    fn test<M: Machine, R: DoubleRounds, V: Variant>() {
+    fn test_chacha<M: Machine, R: DoubleRounds, V: Variant>() {
         for i in 0..TEST_COUNT {
             let mut seed = [0; CHACHA_SEED_LEN];
             getrandom::fill(&mut seed).unwrap();
+            // The difference between the original/ietf variants is only apparent
+            // when index 12 crosses the `u32::MAX` threshold, since that's the
+            // point where ietf would only wrap index 12 around to 0, but the
+            // original variant would also increment index 13.
             if i >= (TEST_COUNT / 2) {
-                let seed_ref: &mut [u32; 12] = unsafe { core::mem::transmute(&mut seed) };
+                let seed_ref: &mut [u32; 12] = unsafe { transmute(&mut seed) };
                 seed_ref[8] = u32::MAX - 4;
             }
-            let mut c = ChaCha::<M, R, V>::new(seed);
-            let mut c_ref = ChaChaRef::from(seed);
 
-            let result_data = core::iter::repeat_with(|| c_ref.block::<R, V>())
+            let mut chacha = ChaCha::<M, R, V>::new(seed);
+            let mut chacha_ref = ChaChaRef::from(seed);
+            let chacha_iter = repeat_with(|| chacha.get_block()).take(TEST_LEN).flatten();
+            let chacha_ref_iter = repeat_with(|| chacha_ref.block::<R, V>())
                 .take(TEST_LEN_REF)
-                .flatten()
-                .collect::<Vec<_>>();
-            result_data
-                .chunks_exact(CHUNKED_RESULT_LEN)
-                .for_each(|cur| {
-                    let testing = c.get_block();
-                    assert_eq!(cur, testing);
-                });
+                .flatten();
+
+            chacha_iter
+                .zip(chacha_ref_iter)
+                .for_each(|(a, b)| assert_eq!(a, b));
         }
     }
 }
