@@ -1,0 +1,21 @@
+name: "run tests on nightly"
+on: [push, pull_request]
+
+jobs:
+  test:
+    name: cargo test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            arch: amd64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - run: echo "RUSTFLAGS=-Ctarget-cpu=native" >> "$GITHUB_ENV"
+      - run: cargo update
+      - run: cargo test --no-run --features nightly
+      - run: cargo test --features nightly
