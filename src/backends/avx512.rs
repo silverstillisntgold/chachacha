@@ -13,7 +13,7 @@ pub struct Matrix {
 impl Add for Matrix {
     type Output = Self;
 
-    #[inline]
+    #[inline(always)]
     fn add(mut self, rhs: Self) -> Self::Output {
         unsafe {
             for i in 0..self.state.len() {
@@ -25,7 +25,7 @@ impl Add for Matrix {
 }
 
 impl Matrix {
-    #[inline]
+    #[inline(always)]
     fn quarter_round(&mut self) {
         unsafe {
             self.state[0] = _mm512_add_epi32(self.state[0], self.state[1]);
@@ -46,7 +46,7 @@ impl Matrix {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn make_diagonal(&mut self) {
         unsafe {
             self.state[0] = _mm512_shuffle_epi32(self.state[0], 0b_10_01_00_11);
@@ -55,7 +55,7 @@ impl Matrix {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn unmake_diagonal(&mut self) {
         unsafe {
             self.state[2] = _mm512_shuffle_epi32(self.state[2], 0b_10_01_00_11);
@@ -66,7 +66,7 @@ impl Matrix {
 }
 
 impl Machine for Matrix {
-    #[inline]
+    #[inline(always)]
     fn new_djb(state: &ChaChaSmall) -> Self {
         unsafe {
             let mut result = Matrix {
@@ -83,7 +83,7 @@ impl Machine for Matrix {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn new_ietf(state: &ChaChaSmall) -> Self {
         unsafe {
             let mut result = Matrix {
@@ -102,7 +102,53 @@ impl Machine for Matrix {
         }
     }
 
-    #[inline]
+    #[inline(always)]
+    fn increment_djb(&mut self) {
+        unsafe {
+            self.state[3] = _mm512_add_epi64(
+                self.state[3],
+                _mm512_set_epi64(
+                    0,
+                    DEPTH as i64,
+                    0,
+                    DEPTH as i64,
+                    0,
+                    DEPTH as i64,
+                    0,
+                    DEPTH as i64,
+                ),
+            );
+        }
+    }
+
+    #[inline(always)]
+    fn increment_ietf(&mut self) {
+        unsafe {
+            self.state[3] = _mm512_add_epi32(
+                self.state[3],
+                _mm512_set_epi32(
+                    0,
+                    0,
+                    0,
+                    DEPTH as i32,
+                    0,
+                    0,
+                    0,
+                    DEPTH as i32,
+                    0,
+                    0,
+                    0,
+                    DEPTH as i32,
+                    0,
+                    0,
+                    0,
+                    DEPTH as i32,
+                ),
+            );
+        }
+    }
+
+    #[inline(always)]
     fn double_round(&mut self) {
         // Column rounds
         self.quarter_round();
@@ -112,7 +158,7 @@ impl Machine for Matrix {
         self.unmake_diagonal();
     }
 
-    #[inline]
+    #[inline(always)]
     fn fill_block(self, buf: &mut [u8; BUF_LEN]) {
         unsafe {
             *buf = transmute([
@@ -141,52 +187,6 @@ impl Machine for Matrix {
                     _mm512_extracti32x4_epi32(self.state[3], 0),
                 ],
             ]);
-        }
-    }
-
-    #[inline]
-    fn increment_djb(&mut self) {
-        unsafe {
-            self.state[3] = _mm512_add_epi64(
-                self.state[3],
-                _mm512_set_epi64(
-                    0,
-                    DEPTH as i64,
-                    0,
-                    DEPTH as i64,
-                    0,
-                    DEPTH as i64,
-                    0,
-                    DEPTH as i64,
-                ),
-            );
-        }
-    }
-
-    #[inline]
-    fn increment_ietf(&mut self) {
-        unsafe {
-            self.state[3] = _mm512_add_epi32(
-                self.state[3],
-                _mm512_set_epi32(
-                    0,
-                    0,
-                    0,
-                    DEPTH as i32,
-                    0,
-                    0,
-                    0,
-                    DEPTH as i32,
-                    0,
-                    0,
-                    0,
-                    DEPTH as i32,
-                    0,
-                    0,
-                    0,
-                    DEPTH as i32,
-                ),
-            );
         }
     }
 }

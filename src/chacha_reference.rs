@@ -19,7 +19,6 @@ const CHACHA_RESULT_SIZE: usize = CHACHA_SIZE * size_of::<u32>();
 type ChaChaMatrix = [u32; CHACHA_SIZE];
 type ChaChaResult = [u8; CHACHA_RESULT_SIZE];
 
-#[allow(unused)]
 #[derive(Clone)]
 pub struct ChaCha {
     row_a: Row,
@@ -36,13 +35,14 @@ impl Add for ChaCha {
         let mut a: ChaChaMatrix = unsafe { transmute(self) };
         let b: ChaChaMatrix = unsafe { transmute(rhs) };
         a.iter_mut()
-            .zip(b.into_iter())
+            .zip(b)
             .for_each(|(a, b)| *a = a.wrapping_add(b));
         a
     }
 }
 
 impl From<[u8; 48]> for ChaCha {
+    #[inline]
     fn from(value: [u8; 48]) -> Self {
         unsafe {
             let wow: [Row; 3] = transmute(value);
@@ -52,6 +52,7 @@ impl From<[u8; 48]> for ChaCha {
 }
 
 impl From<u8> for ChaCha {
+    #[inline]
     fn from(value: u8) -> Self {
         let mut result: ChaCha = unsafe { core::mem::MaybeUninit::uninit().assume_init() };
         result.row_a = ROW_A;

@@ -96,6 +96,8 @@ use backends::Matrix;
 use rounds::*;
 use variations::*;
 
+pub use util::ChaChaSmall;
+
 pub type ChaCha8Ietf = ChaCha<Matrix, R8, Ietf>;
 pub type ChaCha12Ietf = ChaCha<Matrix, R12, Ietf>;
 pub type ChaCha20Ietf = ChaCha<Matrix, R20, Ietf>;
@@ -121,30 +123,21 @@ mod tests {
     /// produces a quarter of the output per block operation.
     const TEST_LEN_REF: usize = TEST_LEN * 4;
 
-    #[cfg(all(
-        target_feature = "neon",
-        any(target_arch = "aarch64", target_arch = "arm64ec")
-    ))]
+    #[cfg(target_feature = "neon")]
     #[test]
     fn chacha_8_neon() {
         test_chacha::<neon::Matrix, R8, Djb>();
         test_chacha::<neon::Matrix, R8, Ietf>();
     }
 
-    #[cfg(all(
-        target_feature = "neon",
-        any(target_arch = "aarch64", target_arch = "arm64ec")
-    ))]
+    #[cfg(target_feature = "neon")]
     #[test]
     fn chacha_12_neon() {
         test_chacha::<neon::Matrix, R12, Djb>();
         test_chacha::<neon::Matrix, R12, Ietf>();
     }
 
-    #[cfg(all(
-        target_feature = "neon",
-        any(target_arch = "aarch64", target_arch = "arm64ec")
-    ))]
+    #[cfg(target_feature = "neon")]
     #[test]
     fn chacha_20_neon() {
         test_chacha::<neon::Matrix, R20, Djb>();

@@ -1,9 +1,8 @@
+use crate::variations::*;
 use core::{
     mem::{MaybeUninit, transmute},
     ops::Add,
 };
-
-use crate::variations::{Variant, Variants};
 
 /// Standard constant used in ChaCha implementations.
 pub const ROW_A: Row = Row {
@@ -25,9 +24,9 @@ pub trait Machine
 where
     Self: Add<Output = Self> + Clone,
 {
-    /// Uses the current `ChaCha` state to create a new `Machine`,
+    /// Uses the provided [`ChaChaSmall`] state to create a new `Machine`,
     /// which will internally handle it's own counters.
-    #[inline]
+    #[inline(always)]
     fn new<V: Variant>(state: &ChaChaSmall) -> Self {
         match V::VAR {
             Variants::Djb => Self::new_djb(state),
@@ -39,20 +38,23 @@ where
 
     fn new_ietf(state: &ChaChaSmall) -> Self;
 
-    /// Process a standard double round of the ChaCha algorithm.
-    ///
-    /// The way that the `Machine` goes about this is completely up
-    /// to the implementation, so long as the results are correct.
-    fn double_round(&mut self);
-
-    /// Fills `buf` with the output of 4 processed ChaCha blocks.
-    /// It's computationally cheaper to fill a passed-in buffer than
-    /// to create and return a new one.
-    fn fill_block(self, buf: &mut [u8; BUF_LEN]);
-
     fn increment_djb(&mut self);
 
     fn increment_ietf(&mut self);
+
+    /// Process a standard double round of the ChaCha algorithm.
+    fn double_round(&mut self);
+
+    /// Fills `buf` with the output of 4 processed ChaCha blocks.
+    fn fill_block(self, buf: &mut [u8; BUF_LEN]);
+
+    #[inline(always)]
+    fn get_block(self) -> [u8; BUF_LEN] {
+        #[allow(invalid_value)]
+        let mut data = unsafe { core::mem::MaybeUninit::uninit().assume_init() };
+        self.fill_block(&mut data);
+        data
+    }
 }
 
 /// Wrapper for the data of a `ChaCha` row. In a reference
@@ -69,6 +71,7 @@ pub union Row {
     pub u64x2: [u64; 2],
 }
 
+#[derive(Clone)]
 pub struct ChaChaSmall {
     pub row_b: Row,
     pub row_c: Row,
@@ -76,15 +79,37 @@ pub struct ChaChaSmall {
 }
 
 impl Default for ChaChaSmall {
-    #[inline]
+    #[inline(always)]
     fn default() -> Self {
         unsafe { MaybeUninit::zeroed().assume_init() }
     }
 }
 
 impl From<[u8; CHACHA_SEED_LEN]> for ChaChaSmall {
-    #[inline]
+    #[inline(always)]
     fn from(value: [u8; CHACHA_SEED_LEN]) -> Self {
         unsafe { transmute(value) }
+    }
+}
+
+impl ChaChaSmall {
+    #[inline(always)]
+    pub fn increment<V: Variant>(&mut self) {
+        match V::VAR {
+            Variants::Djb => self.increment_djb(),
+            Variants::Ietf => self.increment_ietf(),
+        }
+    }
+
+    #[inline(always)]
+    fn increment_djb(&mut self) {
+        unsafe {
+            self.row_d.u64x2[0] = self.row_d.u64x2[0].wrapping_add(DEPTH as u64);
+        }
+    }
+
+    #[inline(always)]
+    fn increment_ietf(&mut self) {
+        unsafe { self.row_d.u32x4[0] = self.row_d.u32x4[0].wrapping_add(DEPTH as u32) }
     }
 }

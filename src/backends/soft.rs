@@ -1,21 +1,21 @@
 use crate::util::*;
 use core::{mem::transmute, ops::Add};
 
+#[derive(Clone)]
+pub struct Matrix {
+    state: [InternalMatrix; DEPTH],
+}
+
 #[derive(Clone, Copy)]
 union InternalMatrix {
     raw: [u32; CHACHA_SIZE],
     rows: [Row; DEPTH],
 }
 
-#[derive(Clone)]
-pub struct Matrix {
-    state: [InternalMatrix; DEPTH],
-}
-
 impl Add for Matrix {
     type Output = Self;
 
-    #[inline]
+    #[inline(always)]
     fn add(mut self, rhs: Self) -> Self::Output {
         unsafe {
             for i in 0..self.state.len() {
@@ -29,7 +29,7 @@ impl Add for Matrix {
 }
 
 impl Matrix {
-    #[inline]
+    #[inline(always)]
     fn quarter_round(&mut self, a: usize, b: usize, c: usize, d: usize) {
         unsafe {
             for matrix in self.state.iter_mut() {
@@ -54,7 +54,7 @@ impl Matrix {
 }
 
 impl Machine for Matrix {
-    #[inline]
+    #[inline(always)]
     fn new_djb(state: &ChaChaSmall) -> Self {
         unsafe {
             let mut result = [[ROW_A, state.row_b, state.row_c, state.row_d]; DEPTH];
@@ -67,7 +67,7 @@ impl Machine for Matrix {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn new_ietf(state: &ChaChaSmall) -> Self {
         unsafe {
             let mut result = [[ROW_A, state.row_b, state.row_c, state.row_d]; DEPTH];
@@ -80,7 +80,29 @@ impl Machine for Matrix {
         }
     }
 
-    #[inline]
+    #[inline(always)]
+    fn increment_djb(&mut self) {
+        unsafe {
+            let increment = DEPTH as u64;
+            self.state[0].rows[3].u64x2[0] = self.state[0].rows[3].u64x2[0].wrapping_add(increment);
+            self.state[1].rows[3].u64x2[0] = self.state[1].rows[3].u64x2[0].wrapping_add(increment);
+            self.state[2].rows[3].u64x2[0] = self.state[2].rows[3].u64x2[0].wrapping_add(increment);
+            self.state[3].rows[3].u64x2[0] = self.state[3].rows[3].u64x2[0].wrapping_add(increment);
+        }
+    }
+
+    #[inline(always)]
+    fn increment_ietf(&mut self) {
+        unsafe {
+            let increment = DEPTH as u32;
+            self.state[0].rows[3].u32x4[0] = self.state[0].rows[3].u32x4[0].wrapping_add(increment);
+            self.state[1].rows[3].u32x4[0] = self.state[1].rows[3].u32x4[0].wrapping_add(increment);
+            self.state[2].rows[3].u32x4[0] = self.state[2].rows[3].u32x4[0].wrapping_add(increment);
+            self.state[3].rows[3].u32x4[0] = self.state[3].rows[3].u32x4[0].wrapping_add(increment);
+        }
+    }
+
+    #[inline(always)]
     fn double_round(&mut self) {
         // Column rounds
         self.quarter_round(0, 4, 8, 12);
@@ -94,32 +116,10 @@ impl Machine for Matrix {
         self.quarter_round(3, 4, 9, 14);
     }
 
-    #[inline]
+    #[inline(always)]
     fn fill_block(self, buf: &mut [u8; BUF_LEN]) {
         unsafe {
             *buf = transmute(self);
-        }
-    }
-
-    #[inline]
-    fn increment_djb(&mut self) {
-        unsafe {
-            let increment = DEPTH as u64;
-            self.state[0].rows[3].u64x2[0] = self.state[0].rows[3].u64x2[0].wrapping_add(increment);
-            self.state[1].rows[3].u64x2[0] = self.state[1].rows[3].u64x2[0].wrapping_add(increment);
-            self.state[2].rows[3].u64x2[0] = self.state[2].rows[3].u64x2[0].wrapping_add(increment);
-            self.state[3].rows[3].u64x2[0] = self.state[3].rows[3].u64x2[0].wrapping_add(increment);
-        }
-    }
-
-    #[inline]
-    fn increment_ietf(&mut self) {
-        unsafe {
-            let increment = DEPTH as u32;
-            self.state[0].rows[3].u32x4[0] = self.state[0].rows[3].u32x4[0].wrapping_add(increment);
-            self.state[1].rows[3].u32x4[0] = self.state[1].rows[3].u32x4[0].wrapping_add(increment);
-            self.state[2].rows[3].u32x4[0] = self.state[2].rows[3].u32x4[0].wrapping_add(increment);
-            self.state[3].rows[3].u32x4[0] = self.state[3].rows[3].u32x4[0].wrapping_add(increment);
         }
     }
 }

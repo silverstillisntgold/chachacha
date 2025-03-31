@@ -1,8 +1,6 @@
-use crate::{
-    rounds::DoubleRounds,
-    util::{BUF_LEN, ChaChaSmall, Machine},
-    variations::{Variant, Variants},
-};
+use crate::rounds::*;
+use crate::util::*;
+use crate::variations::*;
 use core::marker::PhantomData;
 
 pub struct ChaCha<M, R, V> {
@@ -31,14 +29,28 @@ where
         }
     }
 
-    #[inline]
-    pub fn block_fill(&mut self, buf: &mut [u8; BUF_LEN]) {
-        self.block_fill_noincrement(buf);
-        self.increment();
+    #[inline(never)]
+    pub fn fill_block_once(state: &mut ChaChaSmall, buf: &mut [u8; BUF_LEN]) {
+        Self::new(state.clone()).fill_block_noincrement(buf);
+        state.increment::<V>();
     }
 
     #[inline]
-    fn block_fill_noincrement(&mut self, buf: &mut [u8; BUF_LEN]) {
+    pub fn fill_block(&mut self, buf: &mut [u8; BUF_LEN]) {
+        self.fill_block_noincrement(buf);
+        self.increment();
+    }
+
+    #[inline(never)]
+    pub fn get_block(&mut self) -> [u8; BUF_LEN] {
+        #[allow(invalid_value)]
+        let mut result = unsafe { core::mem::MaybeUninit::uninit().assume_init() };
+        self.fill_block(&mut result);
+        result
+    }
+
+    #[inline]
+    fn fill_block_noincrement(&mut self, buf: &mut [u8; BUF_LEN]) {
         let mut cur = self.matrix.clone();
         let old = self.matrix.clone();
         for _ in 0..R::COUNT {
@@ -54,22 +66,5 @@ where
             Variants::Djb => self.matrix.increment_djb(),
             Variants::Ietf => self.matrix.increment_ietf(),
         }
-    }
-
-    #[inline(never)]
-    pub fn get_block(&mut self) -> [u8; BUF_LEN] {
-        #[allow(invalid_value)]
-        let mut result = unsafe { core::mem::MaybeUninit::uninit().assume_init() };
-        self.block_fill(&mut result);
-        result
-    }
-
-    #[inline(never)]
-    pub fn new_and_block_fill<T>(state: T, buf: &mut [u8; BUF_LEN])
-    where
-        T: Into<ChaChaSmall>,
-    {
-        let mut temp = Self::new(state);
-        temp.block_fill_noincrement(buf);
     }
 }

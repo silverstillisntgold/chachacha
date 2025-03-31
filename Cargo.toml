@@ -7,7 +7,6 @@ edition = "2024"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [features]
-default = []
 nightly = []
 
 [dependencies]

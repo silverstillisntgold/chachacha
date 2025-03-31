@@ -15,7 +15,7 @@ pub struct Matrix {
 impl Add for Matrix {
     type Output = Self;
 
-    #[inline]
+    #[inline(always)]
     fn add(mut self, rhs: Self) -> Self::Output {
         unsafe {
             for i in 0..self.state.len() {
@@ -38,7 +38,7 @@ macro_rules! rotate_left_epi32 {
 }
 
 impl Matrix {
-    #[inline]
+    #[inline(always)]
     fn quarter_round(&mut self) {
         unsafe {
             for [a, b, c, d] in self.state.iter_mut() {
@@ -61,7 +61,7 @@ impl Matrix {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn make_diagonal(&mut self) {
         unsafe {
             for [a, _, c, d] in self.state.iter_mut() {
@@ -72,7 +72,7 @@ impl Matrix {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn unmake_diagonal(&mut self) {
         unsafe {
             for [a, _, c, d] in self.state.iter_mut() {
@@ -85,7 +85,7 @@ impl Matrix {
 }
 
 impl Machine for Matrix {
-    #[inline]
+    #[inline(always)]
     fn new_djb(state: &ChaChaSmall) -> Self {
         unsafe {
             let mut result = Matrix {
@@ -104,7 +104,7 @@ impl Machine for Matrix {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn new_ietf(state: &ChaChaSmall) -> Self {
         unsafe {
             let mut result = Matrix {
@@ -123,7 +123,25 @@ impl Machine for Matrix {
         }
     }
 
-    #[inline]
+    #[inline(always)]
+    fn increment_djb(&mut self) {
+        unsafe {
+            let increment = _mm256_set_epi64x(0, DEPTH as i64, 0, DEPTH as i64);
+            self.state[0][3] = _mm256_add_epi64(self.state[0][3], increment);
+            self.state[1][3] = _mm256_add_epi64(self.state[1][3], increment);
+        }
+    }
+
+    #[inline(always)]
+    fn increment_ietf(&mut self) {
+        unsafe {
+            let increment = _mm256_set_epi32(0, 0, 0, DEPTH as i32, 0, 0, 0, DEPTH as i32);
+            self.state[0][3] = _mm256_add_epi32(self.state[0][3], increment);
+            self.state[1][3] = _mm256_add_epi32(self.state[1][3], increment);
+        }
+    }
+
+    #[inline(always)]
     fn double_round(&mut self) {
         // Column rounds
         self.quarter_round();
@@ -133,7 +151,7 @@ impl Machine for Matrix {
         self.unmake_diagonal();
     }
 
-    #[inline]
+    #[inline(always)]
     fn fill_block(self, buf: &mut [u8; BUF_LEN]) {
         unsafe {
             *buf = transmute([
@@ -162,24 +180,6 @@ impl Machine for Matrix {
                     _mm256_extracti128_si256(self.state[1][3], 0),
                 ],
             ]);
-        }
-    }
-
-    #[inline]
-    fn increment_djb(&mut self) {
-        unsafe {
-            let increment = _mm256_set_epi64x(0, DEPTH as i64, 0, DEPTH as i64);
-            self.state[0][3] = _mm256_add_epi64(self.state[0][3], increment);
-            self.state[1][3] = _mm256_add_epi64(self.state[1][3], increment);
-        }
-    }
-
-    #[inline]
-    fn increment_ietf(&mut self) {
-        unsafe {
-            let increment = _mm256_set_epi32(0, 0, 0, DEPTH as i32, 0, 0, 0, DEPTH as i32);
-            self.state[0][3] = _mm256_add_epi32(self.state[0][3], increment);
-            self.state[1][3] = _mm256_add_epi32(self.state[1][3], increment);
         }
     }
 }
