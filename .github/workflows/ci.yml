@@ -20,8 +20,9 @@ jobs:
       run: cargo update
     - name: Enable full CPU feature set
       run: echo "RUSTFLAGS=-Ctarget-cpu=native" >> "$GITHUB_ENV"
-    - name: Run tests
-      if: ${{ matrix.toolchain == stable }}
+    - name: Run tests (stable)
+      if: ${{ matrix.toolchain == 'stable' }}
       run: cargo test
-      if: ${{ matrix.toolchain == nightly }}
+    - name: Run tests (nightly)
+      if: ${{ matrix.toolchain == 'nightly' }}
       run: cargo test --features nightly
