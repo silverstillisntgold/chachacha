@@ -1,3 +1,4 @@
+use crate::chacha::ChaChaSmall;
 use crate::variations::*;
 use core::{
     mem::{MaybeUninit, transmute},
@@ -12,11 +13,27 @@ pub const ROW_A: Row = Row {
 pub const CHACHA_SIZE: usize = 16;
 /// Size (in 8-bit integers) of a ChaCha computation result.
 pub const BUF_LEN: usize = CHACHA_SIZE * WIDTH * (size_of::<u32>() / size_of::<u8>());
+/// Size (in 64-bit integers) of a ChaCha computation result.
+pub const BUF_LEN_U64: usize = BUF_LEN / size_of::<u64>();
 /// Since we process in chunks of 4, the counter of the base
 /// ChaCha instance needs to be incremented by 4.
 pub const DEPTH: usize = 4;
 pub const WIDTH: usize = 4;
 pub const CHACHA_SEED_LEN: usize = 3 * size_of::<Row>();
+
+/// Wrapper for the data of a `ChaCha` row. In a reference
+/// implementation this would just be the `u32x4` field, but having
+/// `u64x2` is useful for working with a 64-bit counter and `u8x16`
+/// is useful for some tests. `u16x8` is included for completeness.
+#[allow(unused)]
+#[repr(align(16))]
+#[derive(Clone, Copy)]
+pub union Row {
+    pub u8x16: [u8; 16],
+    pub u16x8: [u16; 8],
+    pub u32x4: [u32; 4],
+    pub u64x2: [u64; 2],
+}
 
 /// Defines the interface that concrete implementations needed to
 /// implement to process the state of a `ChaCha` instance.
@@ -51,65 +68,22 @@ where
     #[inline(always)]
     fn get_block(self) -> [u8; BUF_LEN] {
         #[allow(invalid_value)]
-        let mut data = unsafe { core::mem::MaybeUninit::uninit().assume_init() };
-        self.fill_block(&mut data);
-        data
-    }
-}
-
-/// Wrapper for the data of a `ChaCha` row. In a reference
-/// implementation this would just be the `u32x4` field, but having
-/// `u64x2` is useful for working with a 64-bit counter and `u8x16`
-/// is useful for some tests. `u16x8` is included for completeness.
-#[allow(unused)]
-#[repr(align(16))]
-#[derive(Clone, Copy)]
-pub union Row {
-    pub u8x16: [u8; 16],
-    pub u16x8: [u16; 8],
-    pub u32x4: [u32; 4],
-    pub u64x2: [u64; 2],
-}
-
-#[derive(Clone)]
-pub struct ChaChaSmall {
-    pub row_b: Row,
-    pub row_c: Row,
-    pub row_d: Row,
-}
-
-impl Default for ChaChaSmall {
-    #[inline(always)]
-    fn default() -> Self {
-        unsafe { MaybeUninit::zeroed().assume_init() }
-    }
-}
-
-impl From<[u8; CHACHA_SEED_LEN]> for ChaChaSmall {
-    #[inline(always)]
-    fn from(value: [u8; CHACHA_SEED_LEN]) -> Self {
-        unsafe { transmute(value) }
-    }
-}
-
-impl ChaChaSmall {
-    #[inline(always)]
-    pub fn increment<V: Variant>(&mut self) {
-        match V::VAR {
-            Variants::Djb => self.increment_djb(),
-            Variants::Ietf => self.increment_ietf(),
-        }
+        let mut buf = unsafe { MaybeUninit::uninit().assume_init() };
+        self.fill_block(&mut buf);
+        buf
     }
 
     #[inline(always)]
-    fn increment_djb(&mut self) {
-        unsafe {
-            self.row_d.u64x2[0] = self.row_d.u64x2[0].wrapping_add(DEPTH as u64);
-        }
+    fn fill_block_u64(self, buf: &mut [u64; BUF_LEN_U64]) {
+        let buf_u8: &mut [u8; BUF_LEN] = unsafe { transmute(buf) };
+        self.fill_block(buf_u8);
     }
 
     #[inline(always)]
-    fn increment_ietf(&mut self) {
-        unsafe { self.row_d.u32x4[0] = self.row_d.u32x4[0].wrapping_add(DEPTH as u32) }
+    fn get_block_u64(self) -> [u64; BUF_LEN_U64] {
+        #[allow(invalid_value)]
+        let mut buf = unsafe { MaybeUninit::uninit().assume_init() };
+        self.fill_block_u64(&mut buf);
+        buf
     }
 }

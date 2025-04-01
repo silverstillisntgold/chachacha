@@ -1,3 +1,4 @@
+use crate::chacha::ChaChaSmall;
 use crate::util::*;
 #[cfg(target_arch = "x86")]
 use core::arch::x86::*;

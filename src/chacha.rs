@@ -2,6 +2,50 @@ use crate::rounds::*;
 use crate::util::*;
 use crate::variations::*;
 use core::marker::PhantomData;
+use core::mem::{MaybeUninit, transmute};
+
+#[derive(Clone)]
+pub struct ChaChaSmall {
+    pub row_b: Row,
+    pub row_c: Row,
+    pub row_d: Row,
+}
+
+impl Default for ChaChaSmall {
+    #[inline(always)]
+    fn default() -> Self {
+        unsafe { MaybeUninit::zeroed().assume_init() }
+    }
+}
+
+impl From<[u8; CHACHA_SEED_LEN]> for ChaChaSmall {
+    #[inline(always)]
+    fn from(value: [u8; CHACHA_SEED_LEN]) -> Self {
+        unsafe { transmute(value) }
+    }
+}
+
+impl ChaChaSmall {
+    #[inline(always)]
+    pub fn increment<V: Variant>(&mut self) {
+        match V::VAR {
+            Variants::Djb => self.increment_djb(),
+            Variants::Ietf => self.increment_ietf(),
+        }
+    }
+
+    #[inline(always)]
+    fn increment_djb(&mut self) {
+        unsafe {
+            self.row_d.u64x2[0] = self.row_d.u64x2[0].wrapping_add(DEPTH as u64);
+        }
+    }
+
+    #[inline(always)]
+    fn increment_ietf(&mut self) {
+        unsafe { self.row_d.u32x4[0] = self.row_d.u32x4[0].wrapping_add(DEPTH as u32) }
+    }
+}
 
 pub struct ChaCha<M, R, V> {
     matrix: M,
@@ -15,7 +59,7 @@ where
     R: DoubleRounds,
     V: Variant,
 {
-    #[inline]
+    #[inline(always)]
     pub fn new<T>(state: T) -> Self
     where
         T: Into<ChaChaSmall>,
@@ -35,7 +79,7 @@ where
         state.increment::<V>();
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn fill_block(&mut self, buf: &mut [u8; BUF_LEN]) {
         self.fill_block_noincrement(buf);
         self.increment();
@@ -49,7 +93,7 @@ where
         result
     }
 
-    #[inline]
+    #[inline(always)]
     fn fill_block_noincrement(&mut self, buf: &mut [u8; BUF_LEN]) {
         let mut cur = self.matrix.clone();
         let old = self.matrix.clone();
@@ -60,7 +104,7 @@ where
         result.fill_block(buf);
     }
 
-    #[inline]
+    #[inline(always)]
     fn increment(&mut self) {
         match V::VAR {
             Variants::Djb => self.matrix.increment_djb(),

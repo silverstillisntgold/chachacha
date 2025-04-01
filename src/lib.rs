@@ -96,7 +96,7 @@ use backends::Matrix;
 use rounds::*;
 use variations::*;
 
-pub use util::ChaChaSmall;
+pub use chacha::ChaChaSmall;
 
 pub type ChaCha8Ietf = ChaCha<Matrix, R8, Ietf>;
 pub type ChaCha12Ietf = ChaCha<Matrix, R12, Ietf>;

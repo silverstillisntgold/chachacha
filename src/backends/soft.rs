@@ -1,3 +1,4 @@
+use crate::chacha::ChaChaSmall;
 use crate::util::*;
 use core::{mem::transmute, ops::Add};
 
