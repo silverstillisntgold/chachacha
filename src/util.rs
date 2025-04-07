@@ -1,3 +1,4 @@
+use crate::rounds::*;
 use crate::variations::*;
 use core::ops::Add;
 
@@ -12,7 +13,7 @@ pub const CHACHA_SEED_LEN: usize = (CHACHA_ROWS - 1) * size_of::<Row>();
 pub const CHACHA_SIZE: usize = CHACHA_ROWS * CHACHA_COLUMNS;
 /// The amount of distinct Chacha blocks we process in parallel.
 pub const DEPTH: usize = 4;
-/// Standard constant used in ChaCha implementations.
+/// Standard constant used in all ChaCha implementations.
 pub const ROW_A: Row = Row {
     u8x16: *b"expand 32-byte k",
 };
@@ -70,4 +71,20 @@ where
     fn double_round(&mut self);
 
     fn fetch_result(self, buf: &mut [u8; BUF_LEN]);
+
+    #[inline(always)]
+    fn chacha<const INCREMENT: bool, R: DoubleRounds, V: Variant>(
+        &mut self,
+        buf: &mut [u8; BUF_LEN],
+    ) {
+        let mut cur = self.clone();
+        for _ in 0..R::COUNT {
+            cur.double_round();
+        }
+        let result = cur + self.clone();
+        if INCREMENT {
+            self.increment::<V>();
+        }
+        result.fetch_result(buf);
+    }
 }

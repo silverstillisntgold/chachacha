@@ -113,7 +113,6 @@ impl ChaCha {
     #[inline(never)]
     pub fn block<R: DoubleRounds, V: Variant>(&mut self) -> ChaChaResult {
         let mut cur = self.clone();
-        let old = self.clone();
 
         for _ in 0..R::COUNT {
             // Column rounds
@@ -128,7 +127,7 @@ impl ChaCha {
             cur.quarter_round(3, 4, 9, 14);
         }
 
-        let result = cur + old;
+        let result = cur + self.clone();
 
         match V::VAR {
             Variants::Djb => self.increment_djb(),

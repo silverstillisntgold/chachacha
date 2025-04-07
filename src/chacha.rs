@@ -3,6 +3,7 @@ use crate::util::*;
 use crate::variations::*;
 use core::marker::PhantomData;
 use core::mem::{MaybeUninit, transmute};
+use core::ptr::copy_nonoverlapping;
 
 #[repr(C)]
 pub struct ChaChaCore<M, R, V> {
@@ -67,23 +68,28 @@ where
         state.into()
     }
 
+    #[inline(never)]
     pub fn fill(&mut self, dest: &mut [u8]) {
-        let mut m = M::new::<V>(self.as_ref());
+        let mut machine = M::new::<V>(self.as_ref());
         dest.chunks_exact_mut(BUF_LEN).for_each(|chunk| {
             let chunk: &mut [u8; BUF_LEN] = chunk.try_into().unwrap();
+            machine.chacha::<true, R, V>(chunk);
+            self.increment();
         });
+        self.fill_finalize(
+            &mut machine,
+            dest.chunks_exact_mut(BUF_LEN).into_remainder(),
+        );
     }
 
     #[inline(never)]
-    fn process_chacha(m: &mut M, buf: &mut [u8; BUF_LEN]) {
-        let mut cur = m.clone();
-        let old = cur.clone();
-        for _ in 0..R::COUNT {
-            cur.double_round();
+    fn fill_finalize(&mut self, machine: &mut M, rem: &mut [u8]) {
+        #[allow(invalid_value)]
+        let mut src = unsafe { MaybeUninit::uninit().assume_init() };
+        machine.chacha::<false, R, V>(&mut src);
+        unsafe {
+            copy_nonoverlapping(src.as_ptr(), rem.as_mut_ptr(), rem.len());
         }
-        let result = cur + old;
-        result.fetch_result(buf);
-        m.increment::<V>();
     }
 
     #[inline(always)]
@@ -110,19 +116,9 @@ where
 
     #[inline(never)]
     pub fn fill_block(&mut self, buf: &mut [u8; BUF_LEN]) {
-        self.process_chacha_once(buf);
+        let mut machine = M::new::<V>(self.as_ref());
+        machine.chacha::<false, R, V>(buf);
         self.increment();
-    }
-
-    #[inline(always)]
-    fn process_chacha_once(&mut self, buf: &mut [u8; BUF_LEN]) {
-        let mut cur = M::new::<V>(self.as_ref());
-        let old = cur.clone();
-        for _ in 0..R::COUNT {
-            cur.double_round();
-        }
-        let result = cur + old;
-        result.fetch_result(buf);
     }
 
     #[inline(always)]
