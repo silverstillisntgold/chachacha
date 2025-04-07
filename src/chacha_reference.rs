@@ -1,6 +1,6 @@
 /*!
-Module containing a reference chacha implementation, which is compared to the reference
-chacha test vectors available [here].
+Module containing a reference Chacha implementation, which is verified against the reference
+Chacha test vectors available [here].
 
 The tests are only run against the original [`Djb`] variant, but the difference in a simple
 reference implementation like this is trivial (literally a single line of code), so we assume passing
@@ -23,7 +23,7 @@ type ChaChaMatrix = [u32; CHACHA_SIZE];
 type ChaChaResult = [u8; CHACHA_RESULT_SIZE];
 
 #[derive(Clone)]
-#[repr(C, align(64))]
+#[repr(C)]
 pub struct ChaCha {
     row_a: Row,
     row_b: Row,

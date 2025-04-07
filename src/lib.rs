@@ -91,21 +91,20 @@ mod rounds;
 mod util;
 mod variations;
 
-use self::chacha::ChaCha;
-use backends::Matrix;
+use self::chacha::ChaChaCore;
 use rounds::*;
 use variations::*;
 
-pub type ChaCha8Ietf = ChaCha<Matrix, R8, Ietf>;
-pub type ChaCha12Ietf = ChaCha<Matrix, R12, Ietf>;
-pub type ChaCha20Ietf = ChaCha<Matrix, R20, Ietf>;
+type ChaCha<R, V> = ChaChaCore<backends::Matrix, R, V>;
 
-pub type ChaCha8Djb = ChaCha<Matrix, R8, Djb>;
-pub type ChaCha12Djb = ChaCha<Matrix, R12, Djb>;
-pub type ChaCha20Djb = ChaCha<Matrix, R20, Djb>;
+pub type ChaCha8Ietf = ChaCha<R8, Ietf>;
+pub type ChaCha12Ietf = ChaCha<R12, Ietf>;
+pub type ChaCha20Ietf = ChaCha<R20, Ietf>;
 
-// VERY IMPORTANT: THESE TESTS SUCCEEDING ONLY ENSURES CORRECTNESS
-// WHEN THE REFERENCE IMPLEMENTATION ALSO PASSES ALL ITS TESTS.
+pub type ChaCha8Djb = ChaCha<R8, Djb>;
+pub type ChaCha12Djb = ChaCha<R12, Djb>;
+pub type ChaCha20Djb = ChaCha<R20, Djb>;
+
 #[cfg(test)]
 mod tests {
     use super::backends::*;
@@ -236,7 +235,7 @@ mod tests {
                 seed_ref[8] = u32::MAX - 4;
             }
 
-            let mut chacha = ChaCha::<M, R, V>::new(seed);
+            let mut chacha = ChaChaCore::<M, R, V>::new(seed);
             let mut chacha_ref = ChaChaRef::from(seed);
             let chacha_iter = repeat_with(|| chacha.get_block()).take(TEST_LEN).flatten();
             let chacha_ref_iter = repeat_with(|| chacha_ref.block::<R, V>())

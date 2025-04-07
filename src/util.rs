@@ -1,5 +1,4 @@
-use crate::chacha::ChaCha;
-use core::mem::transmute;
+use crate::variations::*;
 use core::ops::Add;
 
 /// Size (in 8-bit integers) of a ChaCha computation result.
@@ -38,28 +37,31 @@ pub struct ChaChaNaked {
     pub row_d: Row,
 }
 
-impl<M, R, V> AsRef<ChaChaNaked> for ChaCha<M, R, V> {
-    #[inline(always)]
-    fn as_ref(&self) -> &ChaChaNaked {
-        const {
-            assert!(
-                size_of::<Self>() == size_of::<ChaChaNaked>()
-                    && align_of::<Self>() == align_of::<ChaChaNaked>()
-            );
-        }
-        unsafe { transmute(self) }
-    }
-}
-
 /// Defines the interface that concrete implementations need to
 /// implement to process the state of a `ChaCha` instance.
 pub trait Machine
 where
     Self: Add<Output = Self> + Clone,
 {
+    #[inline(always)]
+    fn new<V: Variant>(state: &ChaChaNaked) -> Self {
+        match V::VAR {
+            Variants::Djb => Self::new_djb(state),
+            Variants::Ietf => Self::new_ietf(state),
+        }
+    }
+
     fn new_djb(state: &ChaChaNaked) -> Self;
 
     fn new_ietf(state: &ChaChaNaked) -> Self;
+
+    #[inline(always)]
+    fn increment<V: Variant>(&mut self) {
+        match V::VAR {
+            Variants::Djb => self.increment_djb(),
+            Variants::Ietf => self.increment_ietf(),
+        }
+    }
 
     fn increment_djb(&mut self);
 
@@ -68,10 +70,4 @@ where
     fn double_round(&mut self);
 
     fn fetch_result(self, buf: &mut [u8; BUF_LEN]);
-
-    #[inline(always)]
-    fn fetch_result_u64(self, buf: &mut [u64; BUF_LEN_U64]) {
-        let temp = unsafe { transmute(buf) };
-        self.fetch_result(temp);
-    }
 }
