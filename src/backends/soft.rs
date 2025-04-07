@@ -1,16 +1,17 @@
-use crate::chacha::ChaChaSmall;
 use crate::util::*;
 use core::{mem::transmute, ops::Add};
 
 #[derive(Clone)]
+#[repr(C)]
 pub struct Matrix {
     state: [InternalMatrix; DEPTH],
 }
 
 #[derive(Clone, Copy)]
+#[repr(C)]
 union InternalMatrix {
     raw: [u32; CHACHA_SIZE],
-    rows: [Row; DEPTH],
+    rows: [Row; CHACHA_ROWS],
 }
 
 impl Add for Matrix {
@@ -56,28 +57,32 @@ impl Matrix {
 
 impl Machine for Matrix {
     #[inline(always)]
-    fn new_djb(state: &ChaChaSmall) -> Self {
+    fn new_djb(state: &ChaChaNaked) -> Self {
         unsafe {
-            let mut result = [[ROW_A, state.row_b, state.row_c, state.row_d]; DEPTH];
-            result[1][3].u64x2[0] = result[1][3].u64x2[0].wrapping_add(1);
-            result[2][3].u64x2[0] = result[2][3].u64x2[0].wrapping_add(2);
-            result[3][3].u64x2[0] = result[3][3].u64x2[0].wrapping_add(3);
-            Self {
-                state: transmute(result),
-            }
+            let mut result = Matrix {
+                state: [InternalMatrix {
+                    rows: [ROW_A, state.row_b, state.row_c, state.row_d],
+                }; DEPTH],
+            };
+            result.state[1].rows[3].u64x2[0] = result.state[1].rows[3].u64x2[0].wrapping_add(1);
+            result.state[2].rows[3].u64x2[0] = result.state[2].rows[3].u64x2[0].wrapping_add(2);
+            result.state[3].rows[3].u64x2[0] = result.state[3].rows[3].u64x2[0].wrapping_add(3);
+            result
         }
     }
 
     #[inline(always)]
-    fn new_ietf(state: &ChaChaSmall) -> Self {
+    fn new_ietf(state: &ChaChaNaked) -> Self {
         unsafe {
-            let mut result = [[ROW_A, state.row_b, state.row_c, state.row_d]; DEPTH];
-            result[1][3].u32x4[0] = result[1][3].u32x4[0].wrapping_add(1);
-            result[2][3].u32x4[0] = result[2][3].u32x4[0].wrapping_add(2);
-            result[3][3].u32x4[0] = result[3][3].u32x4[0].wrapping_add(3);
-            Self {
-                state: transmute(result),
-            }
+            let mut result = Matrix {
+                state: [InternalMatrix {
+                    rows: [ROW_A, state.row_b, state.row_c, state.row_d],
+                }; DEPTH],
+            };
+            result.state[1].rows[3].u32x4[0] = result.state[1].rows[3].u32x4[0].wrapping_add(1);
+            result.state[2].rows[3].u32x4[0] = result.state[2].rows[3].u32x4[0].wrapping_add(2);
+            result.state[3].rows[3].u32x4[0] = result.state[3].rows[3].u32x4[0].wrapping_add(3);
+            result
         }
     }
 
@@ -118,7 +123,7 @@ impl Machine for Matrix {
     }
 
     #[inline(always)]
-    fn fill_block(self, buf: &mut [u8; BUF_LEN]) {
+    fn fetch_result(self, buf: &mut [u8; BUF_LEN]) {
         unsafe {
             *buf = transmute(self);
         }

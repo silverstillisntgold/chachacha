@@ -16,10 +16,10 @@ jobs:
       uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ matrix.toolchain }}
-    - name: Update dependencies
-      run: cargo update
     - name: Enable full CPU feature set
       run: echo "RUSTFLAGS=-Ctarget-cpu=native" >> "$GITHUB_ENV"
+    - name: Update dependencies
+      run: cargo update
     - name: Run tests (stable)
       if: ${{ matrix.toolchain == 'stable' }}
       run: cargo test

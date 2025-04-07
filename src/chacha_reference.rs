@@ -12,7 +12,10 @@ all these tests means we would also pass the equivalent [`Ietf`] variant tests.
 use crate::rounds::*;
 use crate::util::*;
 use crate::variations::*;
-use core::{mem::transmute, ops::Add};
+use core::{
+    mem::{MaybeUninit, transmute},
+    ops::Add,
+};
 
 const CHACHA_RESULT_SIZE: usize = CHACHA_SIZE * size_of::<u32>();
 
@@ -20,6 +23,7 @@ type ChaChaMatrix = [u32; CHACHA_SIZE];
 type ChaChaResult = [u8; CHACHA_RESULT_SIZE];
 
 #[derive(Clone)]
+#[repr(C, align(64))]
 pub struct ChaCha {
     row_a: Row,
     row_b: Row,
@@ -54,7 +58,7 @@ impl From<[u8; 48]> for ChaCha {
 impl From<u8> for ChaCha {
     #[inline]
     fn from(value: u8) -> Self {
-        let mut result: ChaCha = unsafe { core::mem::MaybeUninit::uninit().assume_init() };
+        let mut result: ChaCha = unsafe { MaybeUninit::uninit().assume_init() };
         result.row_a = ROW_A;
         result.row_b.u8x16 = [value; 16];
         result.row_c.u8x16 = [value; 16];

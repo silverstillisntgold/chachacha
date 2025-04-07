@@ -1,4 +1,3 @@
-use crate::chacha::ChaChaSmall;
 use crate::util::*;
 #[cfg(target_arch = "x86")]
 use core::arch::x86::*;
@@ -9,8 +8,9 @@ use core::{mem::transmute, ops::Add};
 const HALF_DEPTH: usize = DEPTH / 2;
 
 #[derive(Clone)]
+#[repr(C)]
 pub struct Matrix {
-    state: [[__m256i; WIDTH]; HALF_DEPTH],
+    state: [[__m256i; CHACHA_ROWS]; HALF_DEPTH],
 }
 
 impl Add for Matrix {
@@ -87,7 +87,7 @@ impl Matrix {
 
 impl Machine for Matrix {
     #[inline(always)]
-    fn new_djb(state: &ChaChaSmall) -> Self {
+    fn new_djb(state: &ChaChaNaked) -> Self {
         unsafe {
             let mut result = Matrix {
                 state: [[
@@ -106,7 +106,7 @@ impl Machine for Matrix {
     }
 
     #[inline(always)]
-    fn new_ietf(state: &ChaChaSmall) -> Self {
+    fn new_ietf(state: &ChaChaNaked) -> Self {
         unsafe {
             let mut result = Matrix {
                 state: [[
@@ -153,7 +153,7 @@ impl Machine for Matrix {
     }
 
     #[inline(always)]
-    fn fill_block(self, buf: &mut [u8; BUF_LEN]) {
+    fn fetch_result(self, buf: &mut [u8; BUF_LEN]) {
         unsafe {
             *buf = transmute([
                 [

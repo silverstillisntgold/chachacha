@@ -1,14 +1,15 @@
-use crate::chacha::ChaChaSmall;
 use crate::util::*;
 use core::arch::aarch64::*;
 use core::{mem::transmute, ops::Add};
 
 #[derive(Clone)]
+#[repr(C)]
 pub struct Matrix {
-    state: [[InternalRow; WIDTH]; DEPTH],
+    state: [[InternalRow; CHACHA_ROWS]; DEPTH],
 }
 
 #[derive(Clone, Copy)]
+#[repr(C)]
 union InternalRow {
     u32x4: uint32x4_t,
     u64x2: uint64x2_t,
@@ -45,7 +46,7 @@ impl Matrix {
     fn quarter_round(&mut self) {
         unsafe {
             for [a, b, c, d] in self.state.iter_mut().map(|v| {
-                let u32x4_4: &mut [uint32x4_t; WIDTH] = transmute(v);
+                let u32x4_4: &mut [uint32x4_t; CHACHA_ROWS] = transmute(v);
                 u32x4_4
             }) {
                 *a = vaddq_u32(*a, *b);
@@ -71,7 +72,7 @@ impl Matrix {
     fn make_diagonal(&mut self) {
         unsafe {
             for [a, _, c, d] in self.state.iter_mut().map(|v| {
-                let u32x4_4: &mut [uint32x4_t; WIDTH] = transmute(v);
+                let u32x4_4: &mut [uint32x4_t; CHACHA_ROWS] = transmute(v);
                 u32x4_4
             }) {
                 *a = vextq_u32(*a, *a, 3);
@@ -85,7 +86,7 @@ impl Matrix {
     fn unmake_diagonal(&mut self) {
         unsafe {
             for [a, _, c, d] in self.state.iter_mut().map(|v| {
-                let u32x4_4: &mut [uint32x4_t; WIDTH] = transmute(v);
+                let u32x4_4: &mut [uint32x4_t; CHACHA_ROWS] = transmute(v);
                 u32x4_4
             }) {
                 *c = vextq_u32(*c, *c, 3);
@@ -98,7 +99,7 @@ impl Matrix {
 
 impl Machine for Matrix {
     #[inline(always)]
-    fn new_djb(state: &ChaChaSmall) -> Self {
+    fn new_djb(state: &ChaChaNaked) -> Self {
         unsafe {
             let mut result = Matrix {
                 state: [[
@@ -125,7 +126,7 @@ impl Machine for Matrix {
     }
 
     #[inline(always)]
-    fn new_ietf(state: &ChaChaSmall) -> Self {
+    fn new_ietf(state: &ChaChaNaked) -> Self {
         unsafe {
             let mut result = Matrix {
                 state: [[
@@ -184,7 +185,7 @@ impl Machine for Matrix {
     }
 
     #[inline(always)]
-    fn fill_block(self, buf: &mut [u8; BUF_LEN]) {
+    fn fetch_result(self, buf: &mut [u8; BUF_LEN]) {
         unsafe {
             *buf = transmute(self);
         }

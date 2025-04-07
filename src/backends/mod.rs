@@ -1,15 +1,13 @@
 pub mod soft;
 
-use cfg_if::cfg_if;
-
-cfg_if! {
+cfg_if::cfg_if! {
     if #[cfg(any(target_arch = "x86_64", target_arch = "x86"))] {
         #[cfg(feature = "nightly")]
         pub mod avx512;
         pub mod avx2;
         pub mod sse2;
 
-        cfg_if! {
+        cfg_if::cfg_if! {
             if #[cfg(all(feature = "nightly", target_feature = "avx512f"))] {
                 pub use avx512::Matrix;
             } else if #[cfg(target_feature = "avx2")] {
