@@ -17,24 +17,6 @@ pub struct ChaChaCore<M, R, V> {
     _v: PhantomData<V>,
 }
 
-impl<M, R, V> AsRef<ChaChaNaked> for ChaChaCore<M, R, V>
-where
-    M: Machine,
-    R: DoubleRounds,
-    V: Variant,
-{
-    #[inline(always)]
-    fn as_ref(&self) -> &ChaChaNaked {
-        // Sanity checks to ensure the `PhantomData` members in
-        // `ChaChaCore` don't cause any issues with transmutation.
-        const {
-            assert!(size_of::<Self>() == size_of::<ChaChaNaked>());
-            assert!(align_of::<Self>() == align_of::<ChaChaNaked>());
-        }
-        unsafe { transmute(self) }
-    }
-}
-
 impl<M, R, V> From<u8> for ChaChaCore<M, R, V>
 where
     M: Machine,
@@ -59,6 +41,18 @@ where
     }
 }
 
+impl<M, R, V> From<[u32; CHACHA_SEED_LEN_U32]> for ChaChaCore<M, R, V>
+where
+    M: Machine,
+    R: DoubleRounds,
+    V: Variant,
+{
+    #[inline(always)]
+    fn from(value: [u32; CHACHA_SEED_LEN_U32]) -> Self {
+        unsafe { transmute(value) }
+    }
+}
+
 impl<M, R, V> ChaChaCore<M, R, V>
 where
     M: Machine,
@@ -72,7 +66,7 @@ where
 
     #[inline(never)]
     pub fn fill(&mut self, dst: &mut [u8]) {
-        let mut machine = M::new::<V>(self.as_ref());
+        let mut machine = M::new::<V>(self.get_naked());
         dst.chunks_exact_mut(BUF_LEN).for_each(|chunk| {
             let buf: &mut [u8; BUF_LEN] = chunk.try_into().unwrap();
             self.chacha(&mut machine, buf)
@@ -114,7 +108,7 @@ where
 
     #[inline(never)]
     fn chacha_once(&mut self, buf: &mut [u8; BUF_LEN]) {
-        let mut machine = M::new::<V>(self.as_ref());
+        let mut machine = M::new::<V>(self.get_naked());
         self.chacha_internal(&mut machine, buf);
     }
 
@@ -153,5 +147,16 @@ where
     #[inline(always)]
     fn increment_ietf(&mut self) {
         unsafe { self.row_d.u32x4[0] = self.row_d.u32x4[0].wrapping_add(DEPTH as u32) }
+    }
+
+    #[inline(always)]
+    fn get_naked(&self) -> &ChaChaNaked {
+        // Sanity checks to ensure the `PhantomData` members in
+        // `ChaChaCore` don't cause any issues with transmutation.
+        const {
+            assert!(size_of::<Self>() == size_of::<ChaChaNaked>());
+            assert!(align_of::<Self>() == align_of::<ChaChaNaked>());
+        }
+        unsafe { transmute(self) }
     }
 }

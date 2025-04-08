@@ -8,6 +8,7 @@ pub const BUF_LEN_U64: usize = BUF_LEN / size_of::<u64>();
 pub const CHACHA_COLUMNS: usize = 4;
 pub const CHACHA_ROWS: usize = 4;
 pub const CHACHA_SEED_LEN: usize = (CHACHA_ROWS - 1) * size_of::<Row>();
+pub const CHACHA_SEED_LEN_U32: usize = CHACHA_SEED_LEN / size_of::<u32>();
 /// Size (in 32-bit integers) of a reference ChaCha matrix.
 pub const CHACHA_SIZE: usize = CHACHA_ROWS * CHACHA_COLUMNS;
 /// The amount of distinct Chacha blocks we process in parallel.
