@@ -12,11 +12,9 @@ all these tests means we would also pass the equivalent [`Ietf`] variant tests.
 use crate::rounds::*;
 use crate::util::*;
 use crate::variations::*;
-use core::{
-    iter::repeat_with,
-    mem::{MaybeUninit, transmute},
-    ops::Add,
-};
+use core::iter::repeat_with;
+use core::mem::transmute;
+use core::ops::Add;
 
 const CHACHA_RESULT_SIZE: usize = CHACHA_SIZE * size_of::<u32>();
 
@@ -46,29 +44,31 @@ impl Add for ChaCha {
     }
 }
 
-impl From<[u8; 48]> for ChaCha {
-    #[inline]
-    fn from(value: [u8; 48]) -> Self {
-        unsafe {
-            let wow: [Row; 3] = transmute(value);
-            transmute([ROW_A, wow[0], wow[1], wow[2]])
-        }
-    }
-}
-
 impl From<u8> for ChaCha {
     #[inline]
     fn from(value: u8) -> Self {
-        let mut result: ChaCha = unsafe { MaybeUninit::uninit().assume_init() };
-        result.row_a = ROW_A;
-        result.row_b.u8x16 = [value; 16];
-        result.row_c.u8x16 = [value; 16];
-        result.row_d.u8x16 = [value; 16];
+        let mut result = ChaCha::from([value; CHACHA_SEED_LEN]);
         unsafe {
             // Tests expect the counter to start at 0.
             result.row_d.u64x2[0] = 0;
         }
         result
+    }
+}
+
+impl From<[u8; CHACHA_SEED_LEN]> for ChaCha {
+    #[inline]
+    fn from(value: [u8; CHACHA_SEED_LEN]) -> Self {
+        unsafe {
+            const CHACHA_SEED_LEN_ROW: usize = CHACHA_SEED_LEN / size_of::<Row>();
+            let rows: [Row; CHACHA_SEED_LEN_ROW] = transmute(value);
+            Self {
+                row_a: ROW_A,
+                row_b: rows[0],
+                row_c: rows[1],
+                row_d: rows[2],
+            }
+        }
     }
 }
 
@@ -112,12 +112,11 @@ impl ChaCha {
     }
 
     #[inline]
-    pub fn fill<R: DoubleRounds, V: Variant>(&mut self, dest: &mut [u8]) {
-        dest.iter_mut()
-            .zip(repeat_with(|| self.get_block::<R, V>()).flatten())
-            .for_each(|(a, b)| {
-                *a = b;
-            });
+    pub fn fill<R: DoubleRounds, V: Variant>(&mut self, dst: &mut [u8]) {
+        let src = repeat_with(|| self.get_block::<R, V>()).flatten();
+        dst.iter_mut().zip(src).for_each(|(dst_val, src_val)| {
+            *dst_val = src_val;
+        });
     }
 
     #[inline(never)]

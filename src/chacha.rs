@@ -17,36 +17,21 @@ pub struct ChaChaCore<M, R, V> {
     _v: PhantomData<V>,
 }
 
-impl<M, R, V> From<u8> for ChaChaCore<M, R, V>
-where
-    M: Machine,
-    R: DoubleRounds,
-    V: Variant,
-{
+impl<M, R, V> From<u8> for ChaChaCore<M, R, V> {
     #[inline(always)]
     fn from(value: u8) -> Self {
         [value; CHACHA_SEED_LEN].into()
     }
 }
 
-impl<M, R, V> From<[u8; CHACHA_SEED_LEN]> for ChaChaCore<M, R, V>
-where
-    M: Machine,
-    R: DoubleRounds,
-    V: Variant,
-{
+impl<M, R, V> From<[u8; CHACHA_SEED_LEN]> for ChaChaCore<M, R, V> {
     #[inline(always)]
     fn from(value: [u8; CHACHA_SEED_LEN]) -> Self {
         unsafe { transmute(value) }
     }
 }
 
-impl<M, R, V> From<[u32; CHACHA_SEED_LEN_U32]> for ChaChaCore<M, R, V>
-where
-    M: Machine,
-    R: DoubleRounds,
-    V: Variant,
-{
+impl<M, R, V> From<[u32; CHACHA_SEED_LEN_U32]> for ChaChaCore<M, R, V> {
     #[inline(always)]
     fn from(value: [u32; CHACHA_SEED_LEN_U32]) -> Self {
         unsafe { transmute(value) }
