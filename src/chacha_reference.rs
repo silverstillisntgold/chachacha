@@ -13,6 +13,7 @@ use crate::rounds::*;
 use crate::util::*;
 use crate::variations::*;
 use core::{
+    iter::repeat_with,
     mem::{MaybeUninit, transmute},
     ops::Add,
 };
@@ -110,8 +111,17 @@ impl ChaCha {
         }
     }
 
+    #[inline]
+    pub fn fill<R: DoubleRounds, V: Variant>(&mut self, dest: &mut [u8]) {
+        dest.iter_mut()
+            .zip(repeat_with(|| self.get_block::<R, V>()).flatten())
+            .for_each(|(a, b)| {
+                *a = b;
+            });
+    }
+
     #[inline(never)]
-    pub fn block<R: DoubleRounds, V: Variant>(&mut self) -> ChaChaResult {
+    pub fn get_block<R: DoubleRounds, V: Variant>(&mut self) -> ChaChaResult {
         let mut cur = self.clone();
 
         for _ in 0..R::COUNT {
@@ -140,7 +150,7 @@ impl ChaCha {
 
 #[test]
 fn reference_8_rounds() {
-    let next_block = |c: &mut ChaCha| c.block::<R8, Djb>();
+    let next_block = |c: &mut ChaCha| c.get_block::<R8, Djb>();
 
     // TC1: All zero key and IV.
     let mut chacha = ChaCha::from(0);
@@ -361,7 +371,7 @@ fn reference_8_rounds() {
 
 #[test]
 fn reference_12_rounds() {
-    let next_block = |c: &mut ChaCha| c.block::<R12, Djb>();
+    let next_block = |c: &mut ChaCha| c.get_block::<R12, Djb>();
 
     // TC1: All zero key and IV.
     let mut chacha = ChaCha::from(0);
@@ -582,7 +592,7 @@ fn reference_12_rounds() {
 
 #[test]
 fn reference_20_rounds() {
-    let next_block = |c: &mut ChaCha| c.block::<R20, Djb>();
+    let next_block = |c: &mut ChaCha| c.get_block::<R20, Djb>();
 
     // TC1: All zero key and IV.
     let mut chacha = ChaCha::from(0);

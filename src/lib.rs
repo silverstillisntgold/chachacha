@@ -114,6 +114,7 @@ mod tests {
     use core::iter::repeat_with;
     use core::mem::transmute;
 
+    const LEN: usize = BUF_LEN + 13;
     const TEST_COUNT: usize = 32;
     const TEST_LEN: usize = 16;
     /// Reference implementation needs 4 times the runs since it
@@ -226,25 +227,31 @@ mod tests {
         for i in 0..TEST_COUNT {
             let mut seed = [0; CHACHA_SEED_LEN];
             getrandom::fill(&mut seed).unwrap();
-            // The difference between the original/ietf variants is only apparent
+            // The difference between the djb/ietf variants is only apparent
             // when index 12 crosses the `u32::MAX` threshold, since that's the
             // point where ietf would only wrap index 12 around to 0, but the
-            // original variant would also increment index 13.
+            // djb variant would also increment index 13.
             if i >= (TEST_COUNT / 2) {
-                let seed_ref: &mut [u32; 12] = unsafe { transmute(&mut seed) };
+                const REF_LEN: usize = CHACHA_SEED_LEN / size_of::<u32>();
+                let seed_ref: &mut [u32; REF_LEN] = unsafe { transmute(&mut seed) };
                 seed_ref[8] = u32::MAX - 4;
             }
-
             let mut chacha = ChaChaCore::<M, R, V>::new(seed);
             let mut chacha_ref = ChaChaRef::from(seed);
+
             let chacha_iter = repeat_with(|| chacha.get_block()).take(TEST_LEN).flatten();
-            let chacha_ref_iter = repeat_with(|| chacha_ref.block::<R, V>())
+            let chacha_ref_iter = repeat_with(|| chacha_ref.get_block::<R, V>())
                 .take(TEST_LEN_REF)
                 .flatten();
-
             chacha_iter
                 .zip(chacha_ref_iter)
                 .for_each(|(a, b)| assert_eq!(a, b));
+
+            let mut buf = [0; LEN];
+            let mut buf_ref = [0; LEN];
+            chacha.fill(&mut buf);
+            chacha_ref.fill::<R, V>(&mut buf_ref);
+            assert_eq!(buf, buf_ref);
         }
     }
 }

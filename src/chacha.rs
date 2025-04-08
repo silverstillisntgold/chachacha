@@ -1,3 +1,5 @@
+#![allow(invalid_value)]
+
 use crate::rounds::*;
 use crate::util::*;
 use crate::variations::*;
@@ -63,7 +65,7 @@ where
     R: DoubleRounds,
     V: Variant,
 {
-    #[inline(always)]
+    #[inline]
     pub fn new(state: impl Into<Self>) -> Self {
         state.into()
     }
@@ -72,53 +74,66 @@ where
     pub fn fill(&mut self, dest: &mut [u8]) {
         let mut machine = M::new::<V>(self.as_ref());
         dest.chunks_exact_mut(BUF_LEN).for_each(|chunk| {
-            let chunk: &mut [u8; BUF_LEN] = chunk.try_into().unwrap();
-            machine.chacha::<true, R, V>(chunk);
-            self.increment();
+            let buf: &mut [u8; BUF_LEN] = chunk.try_into().unwrap();
+            self.chacha(&mut machine, buf)
         });
-        self.fill_finalize(
-            &mut machine,
-            dest.chunks_exact_mut(BUF_LEN).into_remainder(),
-        );
-    }
-
-    #[inline(never)]
-    fn fill_finalize(&mut self, machine: &mut M, rem: &mut [u8]) {
-        #[allow(invalid_value)]
-        let mut src = unsafe { MaybeUninit::uninit().assume_init() };
-        machine.chacha::<false, R, V>(&mut src);
+        let rem = dest.chunks_exact_mut(BUF_LEN).into_remainder();
+        if rem.is_empty() {
+            return;
+        }
+        let mut buf = unsafe { MaybeUninit::uninit().assume_init() };
+        self.chacha(&mut machine, &mut buf);
         unsafe {
-            copy_nonoverlapping(src.as_ptr(), rem.as_mut_ptr(), rem.len());
+            copy_nonoverlapping(buf.as_ptr(), rem.as_mut_ptr(), rem.len());
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_block_u64(&mut self) -> [u64; BUF_LEN_U64] {
-        #[allow(invalid_value)]
         let mut result = unsafe { MaybeUninit::uninit().assume_init() };
         self.fill_block_u64(&mut result);
         result
     }
 
-    #[inline(always)]
-    pub fn fill_block_u64(&mut self, buf: &mut [u64; BUF_LEN_U64]) {
-        let temp = unsafe { transmute(buf) };
-        self.fill_block(temp);
-    }
-
-    #[inline(always)]
+    #[inline]
     pub fn get_block(&mut self) -> [u8; BUF_LEN] {
-        #[allow(invalid_value)]
         let mut result = unsafe { MaybeUninit::uninit().assume_init() };
         self.fill_block(&mut result);
         result
     }
 
-    #[inline(never)]
+    #[inline]
+    pub fn fill_block_u64(&mut self, buf: &mut [u64; BUF_LEN_U64]) {
+        let temp = unsafe { transmute(buf) };
+        self.fill_block(temp);
+    }
+
+    #[inline]
     pub fn fill_block(&mut self, buf: &mut [u8; BUF_LEN]) {
+        self.chacha_once(buf);
+    }
+
+    #[inline(never)]
+    fn chacha_once(&mut self, buf: &mut [u8; BUF_LEN]) {
         let mut machine = M::new::<V>(self.as_ref());
-        machine.chacha::<false, R, V>(buf);
+        self.chacha_internal(&mut machine, buf);
+    }
+
+    #[inline(never)]
+    fn chacha(&mut self, machine: &mut M, buf: &mut [u8; BUF_LEN]) {
+        self.chacha_internal(machine, buf);
+    }
+
+    #[inline(always)]
+    fn chacha_internal(&mut self, machine: &mut M, buf: &mut [u8; BUF_LEN]) {
+        let mut cur = machine.clone();
+        for _ in 0..R::COUNT {
+            cur.double_round();
+        }
+        let result = cur + machine.clone();
+        machine.increment::<V>();
         self.increment();
+        result.fetch_result(buf);
     }
 
     #[inline(always)]

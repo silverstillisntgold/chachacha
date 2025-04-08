@@ -1,4 +1,3 @@
-use crate::rounds::*;
 use crate::variations::*;
 use core::ops::Add;
 
@@ -40,10 +39,7 @@ pub struct ChaChaNaked {
 
 /// Defines the interface that concrete implementations need to
 /// implement to process the state of a `ChaCha` instance.
-pub trait Machine
-where
-    Self: Add<Output = Self> + Clone,
-{
+pub trait Machine: Add<Output = Self> + Clone {
     #[inline(always)]
     fn new<V: Variant>(state: &ChaChaNaked) -> Self {
         match V::VAR {
@@ -71,20 +67,4 @@ where
     fn double_round(&mut self);
 
     fn fetch_result(self, buf: &mut [u8; BUF_LEN]);
-
-    #[inline(always)]
-    fn chacha<const INCREMENT: bool, R: DoubleRounds, V: Variant>(
-        &mut self,
-        buf: &mut [u8; BUF_LEN],
-    ) {
-        let mut cur = self.clone();
-        for _ in 0..R::COUNT {
-            cur.double_round();
-        }
-        let result = cur + self.clone();
-        if INCREMENT {
-            self.increment::<V>();
-        }
-        result.fetch_result(buf);
-    }
 }
