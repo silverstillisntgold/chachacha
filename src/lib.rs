@@ -114,6 +114,8 @@ mod tests {
     use core::iter::repeat_with;
     use core::mem::transmute;
 
+    /// Needs to be more than `BUF_LEN`, but not an exact multiple,
+    /// so that we test both approaches used in [`ChaChaCore::fill`].
     const LEN: usize = BUF_LEN + 13;
     const TEST_COUNT: usize = 32;
     const TEST_LEN: usize = 16;

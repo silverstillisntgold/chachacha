@@ -71,20 +71,19 @@ where
     }
 
     #[inline(never)]
-    pub fn fill(&mut self, dest: &mut [u8]) {
+    pub fn fill(&mut self, dst: &mut [u8]) {
         let mut machine = M::new::<V>(self.as_ref());
-        dest.chunks_exact_mut(BUF_LEN).for_each(|chunk| {
+        dst.chunks_exact_mut(BUF_LEN).for_each(|chunk| {
             let buf: &mut [u8; BUF_LEN] = chunk.try_into().unwrap();
             self.chacha(&mut machine, buf)
         });
-        let rem = dest.chunks_exact_mut(BUF_LEN).into_remainder();
-        if rem.is_empty() {
-            return;
-        }
-        let mut buf = unsafe { MaybeUninit::uninit().assume_init() };
-        self.chacha(&mut machine, &mut buf);
-        unsafe {
-            copy_nonoverlapping(buf.as_ptr(), rem.as_mut_ptr(), rem.len());
+        let rem = dst.chunks_exact_mut(BUF_LEN).into_remainder();
+        if !rem.is_empty() {
+            let mut buf = unsafe { MaybeUninit::uninit().assume_init() };
+            self.chacha(&mut machine, &mut buf);
+            unsafe {
+                copy_nonoverlapping(buf.as_ptr(), rem.as_mut_ptr(), rem.len());
+            }
         }
     }
 
