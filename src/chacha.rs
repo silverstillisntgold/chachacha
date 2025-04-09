@@ -9,9 +9,9 @@ use core::ptr::copy_nonoverlapping;
 
 #[repr(C)]
 pub struct ChaChaCore<M, R, V> {
-    pub row_b: Row,
-    pub row_c: Row,
-    pub row_d: Row,
+    row_b: Row,
+    row_c: Row,
+    row_d: Row,
     _m: PhantomData<M>,
     _r: PhantomData<R>,
     _v: PhantomData<V>,
