@@ -58,8 +58,12 @@ where
         });
         let rem = dst.chunks_exact_mut(BUF_LEN).into_remainder();
         if !rem.is_empty() {
-            let mut buf = unsafe { MaybeUninit::uninit().assume_init() };
+            let mut buf: [u8; 256] = unsafe { MaybeUninit::uninit().assume_init() };
             self.chacha(&mut machine, &mut buf);
+            // This assertion is optimized out in release mode.
+            assert!(rem.len() < buf.len());
+            // SAFETY: We've just guaranteed that the length of `rem` is less
+            // than that of `buf`, so this can never overflow.
             unsafe {
                 copy_nonoverlapping(buf.as_ptr(), rem.as_mut_ptr(), rem.len());
             }
@@ -83,7 +87,7 @@ where
     #[inline]
     pub fn fill_block_u64(&mut self, buf: &mut [u64; BUF_LEN_U64]) {
         let temp = unsafe { transmute(buf) };
-        self.fill_block(temp);
+        self.chacha_once(temp);
     }
 
     #[inline]
@@ -94,16 +98,11 @@ where
     #[inline(never)]
     fn chacha_once(&mut self, buf: &mut [u8; BUF_LEN]) {
         let mut machine = M::new::<V>(self.get_naked());
-        self.chacha_internal(&mut machine, buf);
-    }
-
-    #[inline(never)]
-    fn chacha(&mut self, machine: &mut M, buf: &mut [u8; BUF_LEN]) {
-        self.chacha_internal(machine, buf);
+        self.chacha(&mut machine, buf);
     }
 
     #[inline(always)]
-    fn chacha_internal(&mut self, machine: &mut M, buf: &mut [u8; BUF_LEN]) {
+    fn chacha(&mut self, machine: &mut M, buf: &mut [u8; BUF_LEN]) {
         let mut cur = machine.clone();
         for _ in 0..R::COUNT {
             cur.double_round();

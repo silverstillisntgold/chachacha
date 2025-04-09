@@ -2,6 +2,12 @@
 name = "chachacha"
 version = "0.1.0"
 edition = "2024"
+description = "SIMD optimized implementations of the Chacha stream cipher"
+documentation = "https://docs.rs/chachacha/latest/chachacha/"
+repository = "https://github.com/silverstillisntgold/chachacha"
+categories = ["algorithms", "cryptography", "no-std"]
+keywords = ["chacha", "cipher", "simd"]
+license = "MIT"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

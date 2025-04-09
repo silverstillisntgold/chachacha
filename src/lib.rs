@@ -92,10 +92,11 @@ mod util;
 mod variations;
 
 use self::chacha::ChaChaCore;
+use backends::Matrix;
 use rounds::*;
 use variations::*;
 
-type ChaCha<R, V> = ChaChaCore<backends::Matrix, R, V>;
+type ChaCha<R, V> = ChaChaCore<Matrix, R, V>;
 
 pub type ChaCha8Ietf = ChaCha<R8, Ietf>;
 pub type ChaCha12Ietf = ChaCha<R12, Ietf>;

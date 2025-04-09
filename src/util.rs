@@ -38,8 +38,6 @@ pub struct ChaChaNaked {
     pub row_d: Row,
 }
 
-/// Defines the interface that concrete implementations need to
-/// implement to process the state of a `ChaCha` instance.
 pub trait Machine: Add<Output = Self> + Clone {
     #[inline(always)]
     fn new<V: Variant>(state: &ChaChaNaked) -> Self {

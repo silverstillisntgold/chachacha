@@ -1,6 +1,6 @@
 /*!
 Module containing a reference Chacha implementation, which is verified against the reference
-Chacha test vectors available [here].
+Chacha test vectors (available [here]).
 
 The tests are only run against the original [`Djb`] variant, but the difference in a simple
 reference implementation like this is trivial (literally a single line of code), so we assume passing
