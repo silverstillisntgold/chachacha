@@ -241,7 +241,7 @@ mod tests {
                 let seed_ref: &mut [u32; REF_LEN] = unsafe { transmute(&mut seed) };
                 seed_ref[8] = u32::MAX - 4;
             }
-            let mut chacha = ChaChaCore::<M, R, V>::new(seed);
+            let mut chacha = ChaChaCore::<M, R, V>::from(seed);
             let mut chacha_ref = ChaChaRef::from(seed);
 
             let chacha_iter = repeat_with(|| chacha.get_block()).take(TEST_LEN).flatten();
