@@ -5,7 +5,7 @@ use core::{mem::transmute, ops::Add};
 #[derive(Clone)]
 #[repr(C)]
 pub struct Matrix {
-    state: [[InternalRow; CHACHA_ROWS]; DEPTH],
+    state: [[InternalRow; ROWS]; DEPTH],
 }
 
 #[derive(Clone, Copy)]
@@ -46,7 +46,7 @@ impl Matrix {
     fn quarter_round(&mut self) {
         unsafe {
             for [a, b, c, d] in self.state.iter_mut().map(|v| {
-                let u32x4_4: &mut [uint32x4_t; CHACHA_ROWS] = transmute(v);
+                let u32x4_4: &mut [uint32x4_t; ROWS] = transmute(v);
                 u32x4_4
             }) {
                 *a = vaddq_u32(*a, *b);
@@ -72,7 +72,7 @@ impl Matrix {
     fn make_diagonal(&mut self) {
         unsafe {
             for [a, _, c, d] in self.state.iter_mut().map(|v| {
-                let u32x4_4: &mut [uint32x4_t; CHACHA_ROWS] = transmute(v);
+                let u32x4_4: &mut [uint32x4_t; ROWS] = transmute(v);
                 u32x4_4
             }) {
                 *a = vextq_u32(*a, *a, 3);
@@ -86,7 +86,7 @@ impl Matrix {
     fn unmake_diagonal(&mut self) {
         unsafe {
             for [a, _, c, d] in self.state.iter_mut().map(|v| {
-                let u32x4_4: &mut [uint32x4_t; CHACHA_ROWS] = transmute(v);
+                let u32x4_4: &mut [uint32x4_t; ROWS] = transmute(v);
                 u32x4_4
             }) {
                 *c = vextq_u32(*c, *c, 3);

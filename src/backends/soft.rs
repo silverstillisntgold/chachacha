@@ -10,8 +10,8 @@ pub struct Matrix {
 #[derive(Clone, Copy)]
 #[repr(C)]
 union InternalMatrix {
-    raw: [u32; CHACHA_SIZE],
-    rows: [Row; CHACHA_ROWS],
+    raw: [u32; MATRIX_SIZE],
+    rows: [Row; ROWS],
 }
 
 impl Add for Matrix {

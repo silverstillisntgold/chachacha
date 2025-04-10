@@ -96,7 +96,7 @@ use backends::Matrix;
 use rounds::*;
 use variations::*;
 
-pub use util::{BUF_LEN, BUF_LEN_U64, CHACHA_SEED_LEN, CHACHA_SEED_LEN_U32};
+pub use util::{BUF_LEN, BUF_LEN_U64, SEED_LEN, SEED_LEN_U32};
 
 type ChaCha<R, V> = ChaChaCore<Matrix, R, V>;
 
@@ -230,14 +230,14 @@ mod tests {
 
     fn test_chacha<M: Machine, R: DoubleRounds, V: Variant>() {
         for i in 0..TEST_COUNT {
-            let mut seed = [0; CHACHA_SEED_LEN];
+            let mut seed = [0; SEED_LEN];
             getrandom::fill(&mut seed).unwrap();
             // The difference between the djb/ietf variants is only apparent
             // when index 12 crosses the `u32::MAX` threshold, since that's the
             // point where ietf would only wrap index 12 around to 0, but the
             // djb variant would also increment index 13.
             if i >= (TEST_COUNT / 2) {
-                const REF_LEN: usize = CHACHA_SEED_LEN / size_of::<u32>();
+                const REF_LEN: usize = SEED_LEN / size_of::<u32>();
                 let seed_ref: &mut [u32; REF_LEN] = unsafe { transmute(&mut seed) };
                 seed_ref[8] = u32::MAX - 4;
             }

@@ -8,7 +8,7 @@ use core::{mem::transmute, ops::Add};
 #[derive(Clone)]
 #[repr(C)]
 pub struct Matrix {
-    state: [__m512i; CHACHA_ROWS],
+    state: [__m512i; ROWS],
 }
 
 impl Add for Matrix {

@@ -1,16 +1,18 @@
 use crate::variations::*;
 use core::ops::Add;
 
-/// Size (in 8-bit integers) of a ChaCha computation result.
-pub const BUF_LEN: usize = CHACHA_SIZE * DEPTH * (size_of::<u32>() / size_of::<u8>());
-/// Size (in 64-bit integers) of a ChaCha computation result.
+/// Size (in 8-bit integers) of a single ChaCha computation.
+pub const BUF_LEN: usize = MATRIX_SIZE * DEPTH * (size_of::<u32>() / size_of::<u8>());
+/// Size (in 64-bit integers) of a single ChaCha computation.
 pub const BUF_LEN_U64: usize = BUF_LEN / size_of::<u64>();
-pub const CHACHA_COLUMNS: usize = 4;
-pub const CHACHA_ROWS: usize = 4;
-pub const CHACHA_SEED_LEN: usize = (CHACHA_ROWS - 1) * size_of::<Row>();
-pub const CHACHA_SEED_LEN_U32: usize = CHACHA_SEED_LEN / size_of::<u32>();
+pub const COLUMNS: usize = 4;
+pub const ROWS: usize = 4;
+/// Size (in 8-bit integers) of the raw seed for a ChaCha instance.
+pub const SEED_LEN: usize = (ROWS - 1) * size_of::<Row>();
+/// Size (in 32-bit integers) of the raw seed for a ChaCha instance.
+pub const SEED_LEN_U32: usize = SEED_LEN / size_of::<u32>();
 /// Size (in 32-bit integers) of a reference ChaCha matrix.
-pub const CHACHA_SIZE: usize = CHACHA_ROWS * CHACHA_COLUMNS;
+pub const MATRIX_SIZE: usize = COLUMNS * ROWS;
 /// The amount of distinct Chacha blocks we process in parallel.
 pub const DEPTH: usize = 4;
 /// Standard constant used in all ChaCha implementations.
