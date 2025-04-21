@@ -11,6 +11,8 @@ pub const ROWS: usize = 4;
 pub const SEED_LEN: usize = (ROWS - 1) * size_of::<Row>();
 /// Size (in 32-bit integers) of the raw seed for a ChaCha instance.
 pub const SEED_LEN_U32: usize = SEED_LEN / size_of::<u32>();
+/// Size (in 64-bit integers) of the raw seed for a ChaCha instance.
+pub const SEED_LEN_U64: usize = SEED_LEN / size_of::<u64>();
 /// Size (in 32-bit integers) of a reference ChaCha matrix.
 pub const MATRIX_SIZE: usize = COLUMNS * ROWS;
 /// The amount of distinct Chacha blocks we process in parallel.

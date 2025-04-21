@@ -96,7 +96,7 @@ use backends::Matrix;
 use rounds::*;
 use variations::*;
 
-pub use util::{BUF_LEN, BUF_LEN_U64, SEED_LEN, SEED_LEN_U32};
+pub use util::{BUF_LEN, BUF_LEN_U64, SEED_LEN, SEED_LEN_U32, SEED_LEN_U64};
 
 type ChaCha<R, V> = ChaChaCore<Matrix, R, V>;
 
@@ -117,9 +117,6 @@ mod tests {
     use core::iter::repeat_with;
     use core::mem::transmute;
 
-    /// Needs to be more than `BUF_LEN`, but not an exact multiple,
-    /// so that we test both approaches used in [`ChaChaCore::fill`].
-    const LEN: usize = BUF_LEN + 13;
     const TEST_COUNT: usize = 32;
     const TEST_LEN: usize = 16;
     /// Reference implementation needs 4 times the runs since it
@@ -252,11 +249,14 @@ mod tests {
                 .zip(chacha_ref_iter)
                 .for_each(|(a, b)| assert_eq!(a, b));
 
-            let mut buf = [0; LEN];
-            let mut buf_ref = [0; LEN];
-            chacha.fill(&mut buf);
-            chacha_ref.fill::<R, V>(&mut buf_ref);
-            assert_eq!(buf, buf_ref);
+            let size = getrandom::u64().unwrap() as usize % (BUF_LEN * 2);
+            for _ in 0..TEST_COUNT {
+                let mut buf = [0; BUF_LEN * 2];
+                let mut buf_ref = [0; BUF_LEN * 2];
+                chacha.fill(&mut buf[..size]);
+                chacha_ref.fill::<R, V>(&mut buf_ref[..size]);
+                assert_eq!(buf, buf_ref);
+            }
         }
     }
 }

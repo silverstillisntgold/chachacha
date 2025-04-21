@@ -59,15 +59,13 @@ impl From<u8> for ChaCha {
 impl From<[u8; SEED_LEN]> for ChaCha {
     #[inline]
     fn from(value: [u8; SEED_LEN]) -> Self {
-        unsafe {
-            const SEED_LEN_ROW: usize = SEED_LEN / size_of::<Row>();
-            let rows: [Row; SEED_LEN_ROW] = transmute(value);
-            Self {
-                row_a: ROW_A,
-                row_b: rows[0],
-                row_c: rows[1],
-                row_d: rows[2],
-            }
+        const SEED_LEN_ROW: usize = SEED_LEN / size_of::<Row>();
+        let rows: [Row; SEED_LEN_ROW] = unsafe { transmute(value) };
+        Self {
+            row_a: ROW_A,
+            row_b: rows[0],
+            row_c: rows[1],
+            row_d: rows[2],
         }
     }
 }
