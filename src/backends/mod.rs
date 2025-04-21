@@ -1,14 +1,19 @@
 /*!
-TODO: docs
+Submodule containing all the non-portable shit. Only explicitly re-exports the widest
+implementation available as the definitive `Matrix` for the entire submodule, but still enables
+whatever other modules are available on the target system. This is done for testing purposes,
+and none of it is accessible by the end-user of this crate.
 */
 
 pub mod soft;
 
 cfg_if::cfg_if! {
     if #[cfg(any(target_arch = "x86_64", target_arch = "x86"))] {
-        #[cfg(feature = "nightly")]
+        #[cfg(all(feature = "nightly", target_feature = "avx512f"))]
         pub mod avx512;
+        #[cfg(target_feature = "avx2")]
         pub mod avx2;
+        #[cfg(target_feature = "sse2")]
         pub mod sse2;
 
         cfg_if::cfg_if! {
@@ -20,7 +25,7 @@ cfg_if::cfg_if! {
                 pub use sse2::Matrix;
             } else {
                 compile_error!(
-                    "building programs on x86 without support for sse2 may introduce undefined behavior"
+                    "building x86 programs without support for sse2 may introduce undefined behavior"
                 );
             }
         }
