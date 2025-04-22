@@ -9,7 +9,6 @@ jobs:
         os: [macos-latest,
              ubuntu-24.04-arm,
              ubuntu-latest,
-             windows-11-arm,
              windows-latest]
         toolchain: [nightly, stable]
     runs-on: ${{ matrix.os }}
