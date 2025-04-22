@@ -10,7 +10,7 @@ pub struct Matrix {
 #[derive(Clone, Copy)]
 #[repr(C)]
 union InternalMatrix {
-    raw: [u32; MATRIX_SIZE],
+    raw: [u32; MATRIX_SIZE_U32],
     rows: [Row; ROWS],
 }
 
@@ -123,7 +123,7 @@ impl Machine for Matrix {
     }
 
     #[inline]
-    fn fetch_result(self, buf: &mut [u8; BUF_LEN]) {
+    fn fetch_result(self, buf: &mut [u8; BUF_LEN_U8]) {
         unsafe {
             *buf = transmute(self);
         }

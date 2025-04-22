@@ -20,13 +20,13 @@ pub struct ChaChaCore<M, R, V> {
 impl<M, R, V> From<u8> for ChaChaCore<M, R, V> {
     #[inline]
     fn from(value: u8) -> Self {
-        [value; SEED_LEN].into()
+        [value; SEED_LEN_U8].into()
     }
 }
 
-impl<M, R, V> From<[u8; SEED_LEN]> for ChaChaCore<M, R, V> {
+impl<M, R, V> From<[u8; SEED_LEN_U8]> for ChaChaCore<M, R, V> {
     #[inline]
-    fn from(value: [u8; SEED_LEN]) -> Self {
+    fn from(value: [u8; SEED_LEN_U8]) -> Self {
         unsafe { transmute(value) }
     }
 }
@@ -73,13 +73,13 @@ where
     #[inline(never)]
     pub fn fill(&mut self, dst: &mut [u8]) {
         let mut machine = M::new::<V>(self.get_naked());
-        dst.chunks_exact_mut(BUF_LEN).for_each(|chunk| {
-            let buf: &mut [u8; BUF_LEN] = chunk.try_into().unwrap();
+        dst.chunks_exact_mut(BUF_LEN_U8).for_each(|chunk| {
+            let buf: &mut [u8; BUF_LEN_U8] = chunk.try_into().unwrap();
             self.chacha::<true>(&mut machine, buf)
         });
-        let rem = dst.chunks_exact_mut(BUF_LEN).into_remainder();
+        let rem = dst.chunks_exact_mut(BUF_LEN_U8).into_remainder();
         if !rem.is_empty() {
-            let mut buf: [u8; BUF_LEN] = unsafe { MaybeUninit::uninit().assume_init() };
+            let mut buf: [u8; BUF_LEN_U8] = unsafe { MaybeUninit::uninit().assume_init() };
             self.chacha::<false>(&mut machine, &mut buf);
             unsafe {
                 copy_nonoverlapping(buf.as_ptr(), rem.as_mut_ptr(), rem.len());
@@ -96,7 +96,7 @@ where
     }
 
     #[inline]
-    pub fn get_block(&mut self) -> [u8; BUF_LEN] {
+    pub fn get_block(&mut self) -> [u8; BUF_LEN_U8] {
         let mut result = unsafe { MaybeUninit::uninit().assume_init() };
         self.fill_block(&mut result);
         result
@@ -109,19 +109,19 @@ where
     }
 
     #[inline]
-    pub fn fill_block(&mut self, buf: &mut [u8; BUF_LEN]) {
+    pub fn fill_block(&mut self, buf: &mut [u8; BUF_LEN_U8]) {
         self.chacha_once(buf);
     }
 
     #[inline(never)]
-    fn chacha_once(&mut self, buf: &mut [u8; BUF_LEN]) {
+    fn chacha_once(&mut self, buf: &mut [u8; BUF_LEN_U8]) {
         let mut machine = M::new::<V>(self.get_naked());
         self.chacha::<false>(&mut machine, buf);
         self.increment();
     }
 
     #[inline]
-    fn chacha<const INCREMENT: bool>(&mut self, machine: &mut M, buf: &mut [u8; BUF_LEN]) {
+    fn chacha<const INCREMENT: bool>(&mut self, machine: &mut M, buf: &mut [u8; BUF_LEN_U8]) {
         let mut cur = machine.clone();
         for _ in 0..R::COUNT {
             cur.double_round();
@@ -136,8 +136,7 @@ where
 
     #[inline]
     fn determine_new_counter(&mut self, len: usize) {
-        const CHACHA_REF_BYTES: usize = BUF_LEN / DEPTH;
-        let incr = len.div_ceil(CHACHA_REF_BYTES);
+        let incr = len.div_ceil(MATRIX_SIZE_U8);
         unsafe {
             match V::VAR {
                 Variants::Djb => {

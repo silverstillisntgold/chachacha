@@ -16,10 +16,8 @@ use core::iter::repeat_with;
 use core::mem::transmute;
 use core::ops::Add;
 
-const RESULT_MATRIX_SIZE: usize = MATRIX_SIZE * size_of::<u32>();
-
-type ChaChaMatrix = [u32; MATRIX_SIZE];
-type ChaChaResult = [u8; RESULT_MATRIX_SIZE];
+type ChaChaMatrix = [u32; MATRIX_SIZE_U32];
+type ChaChaResult = [u8; MATRIX_SIZE_U8];
 
 #[derive(Clone)]
 #[repr(C)]
@@ -47,7 +45,7 @@ impl Add for ChaCha {
 impl From<u8> for ChaCha {
     #[inline]
     fn from(value: u8) -> Self {
-        let mut result = ChaCha::from([value; SEED_LEN]);
+        let mut result = ChaCha::from([value; SEED_LEN_U8]);
         unsafe {
             // Tests expect the counter to start at 0.
             result.row_d.u64x2[0] = 0;
@@ -56,10 +54,10 @@ impl From<u8> for ChaCha {
     }
 }
 
-impl From<[u8; SEED_LEN]> for ChaCha {
+impl From<[u8; SEED_LEN_U8]> for ChaCha {
     #[inline]
-    fn from(value: [u8; SEED_LEN]) -> Self {
-        const SEED_LEN_ROW: usize = SEED_LEN / size_of::<Row>();
+    fn from(value: [u8; SEED_LEN_U8]) -> Self {
+        const SEED_LEN_ROW: usize = SEED_LEN_U8 / size_of::<Row>();
         let rows: [Row; SEED_LEN_ROW] = unsafe { transmute(value) };
         Self {
             row_a: ROW_A,
