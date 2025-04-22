@@ -1,5 +1,5 @@
 name: ci
-on: [push, pull_request]
+on: [pull_request, push]
 
 jobs:
   test:
@@ -20,7 +20,7 @@ jobs:
       with:
         toolchain: ${{ matrix.toolchain }}
     - name: Enable full CPU feature set
-      run: echo "RUSTFLAGS=-Ctarget-cpu=native" >> "$GITHUB_ENV"
+      run: echo "RUSTFLAGS=-C target-cpu=native" >> "$GITHUB_ENV"
     - name: Update dependencies
       run: cargo update
     - name: Run tests (stable)
