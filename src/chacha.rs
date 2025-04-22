@@ -18,42 +18,42 @@ pub struct ChaChaCore<M, R, V> {
 }
 
 impl<M, R, V> From<u8> for ChaChaCore<M, R, V> {
-    #[inline(always)]
+    #[inline]
     fn from(value: u8) -> Self {
         [value; SEED_LEN].into()
     }
 }
 
 impl<M, R, V> From<[u8; SEED_LEN]> for ChaChaCore<M, R, V> {
-    #[inline(always)]
+    #[inline]
     fn from(value: [u8; SEED_LEN]) -> Self {
         unsafe { transmute(value) }
     }
 }
 
 impl<M, R, V> From<u32> for ChaChaCore<M, R, V> {
-    #[inline(always)]
+    #[inline]
     fn from(value: u32) -> Self {
         [value; SEED_LEN_U32].into()
     }
 }
 
 impl<M, R, V> From<[u32; SEED_LEN_U32]> for ChaChaCore<M, R, V> {
-    #[inline(always)]
+    #[inline]
     fn from(value: [u32; SEED_LEN_U32]) -> Self {
         unsafe { transmute(value) }
     }
 }
 
 impl<M, R, V> From<u64> for ChaChaCore<M, R, V> {
-    #[inline(always)]
+    #[inline]
     fn from(value: u64) -> Self {
         [value; SEED_LEN_U64].into()
     }
 }
 
 impl<M, R, V> From<[u64; SEED_LEN_U64]> for ChaChaCore<M, R, V> {
-    #[inline(always)]
+    #[inline]
     fn from(value: [u64; SEED_LEN_U64]) -> Self {
         unsafe { transmute(value) }
     }
@@ -120,7 +120,7 @@ where
         self.increment();
     }
 
-    #[inline(always)]
+    #[inline]
     fn chacha<const INCREMENT: bool>(&mut self, machine: &mut M, buf: &mut [u8; BUF_LEN]) {
         let mut cur = machine.clone();
         for _ in 0..R::COUNT {
@@ -134,7 +134,7 @@ where
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn determine_new_counter(&mut self, len: usize) {
         const CHACHA_REF_BYTES: usize = BUF_LEN / DEPTH;
         let incr = len.div_ceil(CHACHA_REF_BYTES);
@@ -150,7 +150,7 @@ where
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn increment(&mut self) {
         match V::VAR {
             Variants::Djb => self.increment_djb(),
@@ -158,19 +158,19 @@ where
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn increment_djb(&mut self) {
         unsafe {
             self.row_d.u64x2[0] = self.row_d.u64x2[0].wrapping_add(DEPTH as u64);
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn increment_ietf(&mut self) {
         unsafe { self.row_d.u32x4[0] = self.row_d.u32x4[0].wrapping_add(DEPTH as u32) }
     }
 
-    #[inline(always)]
+    #[inline]
     fn get_naked(&self) -> &ChaChaNaked {
         // Sanity checks to ensure the `PhantomData` members in
         // `ChaChaCore` don't cause any issues with transmutation.

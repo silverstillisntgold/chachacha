@@ -18,7 +18,7 @@ union InternalRow {
 impl Add for Matrix {
     type Output = Self;
 
-    #[inline(always)]
+    #[inline]
     fn add(mut self, rhs: Self) -> Self::Output {
         unsafe {
             for i in 0..self.state.len() {
@@ -42,7 +42,7 @@ macro_rules! rotate_left_epi32 {
 }
 
 impl Matrix {
-    #[inline(always)]
+    #[inline]
     fn quarter_round(&mut self) {
         unsafe {
             for [a, b, c, d] in self.state.iter_mut().map(|v| {
@@ -68,7 +68,7 @@ impl Matrix {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn make_diagonal(&mut self) {
         unsafe {
             for [a, _, c, d] in self.state.iter_mut().map(|v| {
@@ -82,7 +82,7 @@ impl Matrix {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn unmake_diagonal(&mut self) {
         unsafe {
             for [a, _, c, d] in self.state.iter_mut().map(|v| {
@@ -98,7 +98,7 @@ impl Matrix {
 }
 
 impl Machine for Matrix {
-    #[inline(always)]
+    #[inline]
     fn new_djb(state: &ChaChaNaked) -> Self {
         unsafe {
             let mut result = Matrix {
@@ -125,7 +125,7 @@ impl Machine for Matrix {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn new_ietf(state: &ChaChaNaked) -> Self {
         unsafe {
             let mut result = Matrix {
@@ -152,7 +152,7 @@ impl Machine for Matrix {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn increment_djb(&mut self) {
         unsafe {
             let increment = vcombine_u64(vcreate_u64(DEPTH as u64), vcreate_u64(0));
@@ -163,7 +163,7 @@ impl Machine for Matrix {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn increment_ietf(&mut self) {
         unsafe {
             let increment = vcombine_u32(vcreate_u32(DEPTH as u64), vcreate_u32(0));
@@ -174,7 +174,7 @@ impl Machine for Matrix {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn double_round(&mut self) {
         // Column rounds
         self.quarter_round();
@@ -184,7 +184,7 @@ impl Machine for Matrix {
         self.unmake_diagonal();
     }
 
-    #[inline(always)]
+    #[inline]
     fn fetch_result(self, buf: &mut [u8; BUF_LEN]) {
         unsafe {
             *buf = transmute(self);

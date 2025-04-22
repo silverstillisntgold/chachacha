@@ -17,7 +17,7 @@ union InternalMatrix {
 impl Add for Matrix {
     type Output = Self;
 
-    #[inline(always)]
+    #[inline]
     fn add(mut self, rhs: Self) -> Self::Output {
         unsafe {
             for i in 0..self.state.len() {
@@ -31,7 +31,7 @@ impl Add for Matrix {
 }
 
 impl Matrix {
-    #[inline(always)]
+    #[inline]
     fn quarter_round(&mut self, a: usize, b: usize, c: usize, d: usize) {
         unsafe {
             for matrix in self.state.iter_mut() {
@@ -56,7 +56,7 @@ impl Matrix {
 }
 
 impl Machine for Matrix {
-    #[inline(always)]
+    #[inline]
     fn new_djb(state: &ChaChaNaked) -> Self {
         unsafe {
             let mut result = Matrix {
@@ -71,7 +71,7 @@ impl Machine for Matrix {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn new_ietf(state: &ChaChaNaked) -> Self {
         unsafe {
             let mut result = Matrix {
@@ -86,7 +86,7 @@ impl Machine for Matrix {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn increment_djb(&mut self) {
         unsafe {
             let increment = DEPTH as u64;
@@ -97,7 +97,7 @@ impl Machine for Matrix {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn increment_ietf(&mut self) {
         unsafe {
             let increment = DEPTH as u32;
@@ -108,7 +108,7 @@ impl Machine for Matrix {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn double_round(&mut self) {
         // Column rounds
         self.quarter_round(0, 4, 8, 12);
@@ -122,7 +122,7 @@ impl Machine for Matrix {
         self.quarter_round(3, 4, 9, 14);
     }
 
-    #[inline(always)]
+    #[inline]
     fn fetch_result(self, buf: &mut [u8; BUF_LEN]) {
         unsafe {
             *buf = transmute(self);

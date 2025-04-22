@@ -43,7 +43,7 @@ pub struct ChaChaNaked {
 }
 
 pub trait Machine: Add<Output = Self> + Clone {
-    #[inline(always)]
+    #[inline]
     fn new<V: Variant>(state: &ChaChaNaked) -> Self {
         match V::VAR {
             Variants::Djb => Self::new_djb(state),
@@ -55,7 +55,7 @@ pub trait Machine: Add<Output = Self> + Clone {
 
     fn new_ietf(state: &ChaChaNaked) -> Self;
 
-    #[inline(always)]
+    #[inline]
     fn increment<V: Variant>(&mut self) {
         match V::VAR {
             Variants::Djb => self.increment_djb(),

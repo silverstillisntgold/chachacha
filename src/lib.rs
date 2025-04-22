@@ -117,7 +117,7 @@ mod tests {
     use core::iter::repeat_with;
     use core::mem::transmute;
 
-    const TEST_COUNT: usize = 32;
+    const TEST_COUNT: usize = 50;
     const TEST_LEN: usize = 16;
     /// Reference implementation needs 4 times the runs since it
     /// produces a quarter of the output per block operation.
@@ -125,103 +125,175 @@ mod tests {
 
     #[cfg(target_feature = "neon")]
     #[test]
-    fn chacha_8_neon() {
+    fn chacha_8_neon_djb() {
         test_chacha::<neon::Matrix, R8, Djb>();
+    }
+
+    #[cfg(target_feature = "neon")]
+    #[test]
+    fn chacha_8_neon_ietf() {
         test_chacha::<neon::Matrix, R8, Ietf>();
     }
 
     #[cfg(target_feature = "neon")]
     #[test]
-    fn chacha_12_neon() {
+    fn chacha_12_neon_djb() {
         test_chacha::<neon::Matrix, R12, Djb>();
+    }
+
+    #[cfg(target_feature = "neon")]
+    #[test]
+    fn chacha_12_neon_ietf() {
         test_chacha::<neon::Matrix, R12, Ietf>();
     }
 
     #[cfg(target_feature = "neon")]
     #[test]
-    fn chacha_20_neon() {
+    fn chacha_20_neon_djb() {
         test_chacha::<neon::Matrix, R20, Djb>();
+    }
+
+    #[cfg(target_feature = "neon")]
+    #[test]
+    fn chacha_20_neon_ietf() {
         test_chacha::<neon::Matrix, R20, Ietf>();
     }
 
     #[cfg(all(feature = "nightly", target_feature = "avx512f"))]
     #[test]
-    fn chacha_8_avx512() {
+    fn chacha_8_avx512_djb() {
         test_chacha::<avx512::Matrix, R8, Djb>();
+    }
+
+    #[cfg(all(feature = "nightly", target_feature = "avx512f"))]
+    #[test]
+    fn chacha_8_avx512_ietf() {
         test_chacha::<avx512::Matrix, R8, Ietf>();
     }
 
     #[cfg(all(feature = "nightly", target_feature = "avx512f"))]
     #[test]
-    fn chacha_12_avx512() {
+    fn chacha_12_avx512_djb() {
         test_chacha::<avx512::Matrix, R12, Djb>();
+    }
+
+    #[cfg(all(feature = "nightly", target_feature = "avx512f"))]
+    #[test]
+    fn chacha_12_avx512_ietf() {
         test_chacha::<avx512::Matrix, R12, Ietf>();
     }
 
     #[cfg(all(feature = "nightly", target_feature = "avx512f"))]
     #[test]
-    fn chacha_20_avx512() {
+    fn chacha_20_avx512_djb() {
         test_chacha::<avx512::Matrix, R20, Djb>();
+    }
+
+    #[cfg(all(feature = "nightly", target_feature = "avx512f"))]
+    #[test]
+    fn chacha_20_avx512_ietf() {
         test_chacha::<avx512::Matrix, R20, Ietf>();
     }
 
     #[cfg(target_feature = "avx2")]
     #[test]
-    fn chacha_8_avx2() {
+    fn chacha_8_avx2_djb() {
         test_chacha::<avx2::Matrix, R8, Djb>();
+    }
+
+    #[cfg(target_feature = "avx2")]
+    #[test]
+    fn chacha_8_avx2_ietf() {
         test_chacha::<avx2::Matrix, R8, Ietf>();
     }
 
     #[cfg(target_feature = "avx2")]
     #[test]
-    fn chacha_12_avx2() {
+    fn chacha_12_avx2_djb() {
         test_chacha::<avx2::Matrix, R12, Djb>();
+    }
+
+    #[cfg(target_feature = "avx2")]
+    #[test]
+    fn chacha_12_avx2_ietf() {
         test_chacha::<avx2::Matrix, R12, Ietf>();
     }
 
     #[cfg(target_feature = "avx2")]
     #[test]
-    fn chacha_20_avx2() {
+    fn chacha_20_avx2_djb() {
         test_chacha::<avx2::Matrix, R20, Djb>();
+    }
+
+    #[cfg(target_feature = "avx2")]
+    #[test]
+    fn chacha_20_avx2_ietf() {
         test_chacha::<avx2::Matrix, R20, Ietf>();
     }
 
     #[cfg(target_feature = "sse2")]
     #[test]
-    fn chacha_8_sse2() {
+    fn chacha_8_sse2_djb() {
         test_chacha::<sse2::Matrix, R8, Djb>();
+    }
+
+    #[cfg(target_feature = "sse2")]
+    #[test]
+    fn chacha_8_sse2_ietf() {
         test_chacha::<sse2::Matrix, R8, Ietf>();
     }
 
     #[cfg(target_feature = "sse2")]
     #[test]
-    fn chacha_12_sse2() {
+    fn chacha_12_sse2_djb() {
         test_chacha::<sse2::Matrix, R12, Djb>();
+    }
+
+    #[cfg(target_feature = "sse2")]
+    #[test]
+    fn chacha_12_sse2_ietf() {
         test_chacha::<sse2::Matrix, R12, Ietf>();
     }
 
     #[cfg(target_feature = "sse2")]
     #[test]
-    fn chacha_20_sse2() {
+    fn chacha_20_sse2_djb() {
         test_chacha::<sse2::Matrix, R20, Djb>();
+    }
+
+    #[cfg(target_feature = "sse2")]
+    #[test]
+    fn chacha_20_sse2_ietf() {
         test_chacha::<sse2::Matrix, R20, Ietf>();
     }
 
     #[test]
-    fn chacha_8_soft() {
+    fn chacha_8_soft_djb() {
         test_chacha::<soft::Matrix, R8, Djb>();
+    }
+
+    #[test]
+    fn chacha_8_soft_ietf() {
         test_chacha::<soft::Matrix, R8, Ietf>();
     }
 
     #[test]
-    fn chacha_12_soft() {
+    fn chacha_12_soft_djb() {
         test_chacha::<soft::Matrix, R12, Djb>();
+    }
+
+    #[test]
+    fn chacha_12_soft_ietf() {
         test_chacha::<soft::Matrix, R12, Ietf>();
     }
 
     #[test]
-    fn chacha_20_soft() {
+    fn chacha_20_soft_djb() {
         test_chacha::<soft::Matrix, R20, Djb>();
+    }
+
+    #[test]
+    fn chacha_20_soft_ietf() {
         test_chacha::<soft::Matrix, R20, Ietf>();
     }
 

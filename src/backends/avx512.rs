@@ -14,7 +14,7 @@ pub struct Matrix {
 impl Add for Matrix {
     type Output = Self;
 
-    #[inline(always)]
+    #[inline]
     fn add(mut self, rhs: Self) -> Self::Output {
         unsafe {
             for i in 0..self.state.len() {
@@ -26,7 +26,7 @@ impl Add for Matrix {
 }
 
 impl Matrix {
-    #[inline(always)]
+    #[inline]
     fn quarter_round(&mut self) {
         unsafe {
             self.state[0] = _mm512_add_epi32(self.state[0], self.state[1]);
@@ -47,7 +47,7 @@ impl Matrix {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn make_diagonal(&mut self) {
         unsafe {
             self.state[0] = _mm512_shuffle_epi32(self.state[0], 0b_10_01_00_11);
@@ -56,7 +56,7 @@ impl Matrix {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn unmake_diagonal(&mut self) {
         unsafe {
             self.state[2] = _mm512_shuffle_epi32(self.state[2], 0b_10_01_00_11);
@@ -67,7 +67,7 @@ impl Matrix {
 }
 
 impl Machine for Matrix {
-    #[inline(always)]
+    #[inline]
     fn new_djb(state: &ChaChaNaked) -> Self {
         unsafe {
             let mut result = Matrix {
@@ -84,7 +84,7 @@ impl Machine for Matrix {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn new_ietf(state: &ChaChaNaked) -> Self {
         unsafe {
             let mut result = Matrix {
@@ -103,7 +103,7 @@ impl Machine for Matrix {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn increment_djb(&mut self) {
         unsafe {
             self.state[3] = _mm512_add_epi64(
@@ -122,7 +122,7 @@ impl Machine for Matrix {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn increment_ietf(&mut self) {
         unsafe {
             self.state[3] = _mm512_add_epi32(
@@ -149,7 +149,7 @@ impl Machine for Matrix {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn double_round(&mut self) {
         // Column rounds
         self.quarter_round();
@@ -159,7 +159,7 @@ impl Machine for Matrix {
         self.unmake_diagonal();
     }
 
-    #[inline(always)]
+    #[inline]
     fn fetch_result(self, buf: &mut [u8; BUF_LEN]) {
         unsafe {
             *buf = transmute([
