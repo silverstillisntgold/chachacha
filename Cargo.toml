@@ -8,6 +8,7 @@ repository = "https://github.com/silverstillisntgold/chachacha"
 categories = ["algorithms", "cryptography", "no-std"]
 keywords = ["chacha", "cipher", "simd"]
 license = "MIT"
+rust-version = "1.85"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
