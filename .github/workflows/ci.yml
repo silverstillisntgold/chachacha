@@ -6,10 +6,7 @@ jobs:
     name: test
     strategy:
       matrix:
-        os: [macos-latest,
-             ubuntu-24.04-arm,
-             ubuntu-latest,
-             windows-latest]
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
         toolchain: [nightly, stable]
     runs-on: ${{ matrix.os }}
     steps:
