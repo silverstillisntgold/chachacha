@@ -6,6 +6,7 @@ use crate::variations::*;
 use core::marker::PhantomData;
 use core::mem::{MaybeUninit, transmute};
 use core::ptr::copy_nonoverlapping;
+use core::slice::from_raw_parts_mut;
 
 #[repr(C)]
 pub struct ChaChaCore<M, R, V> {
@@ -66,8 +67,16 @@ where
     V: Variant,
 {
     #[inline]
-    pub fn new(state: impl Into<Self>) -> Self {
+    pub fn new<T: Into<Self>>(state: T) -> Self {
         state.into()
+    }
+
+    #[inline]
+    pub unsafe fn fill_raw<T>(&mut self, dst: &mut [T]) {
+        let data = dst.as_mut_ptr().cast();
+        let len = dst.len() * size_of::<T>();
+        let dst_as_bytes = unsafe { from_raw_parts_mut(data, len) };
+        self.fill(dst_as_bytes);
     }
 
     #[inline(never)]
@@ -136,14 +145,14 @@ where
 
     #[inline]
     fn determine_new_counter(&mut self, len: usize) {
-        let incr = len.div_ceil(MATRIX_SIZE_U8);
+        let increment = len.div_ceil(MATRIX_SIZE_U8);
         unsafe {
             match V::VAR {
                 Variants::Djb => {
-                    self.row_d.u64x2[0] = self.row_d.u64x2[0].wrapping_add(incr as u64);
+                    self.row_d.u64x2[0] = self.row_d.u64x2[0].wrapping_add(increment as u64);
                 }
                 Variants::Ietf => {
-                    self.row_d.u32x4[0] = self.row_d.u32x4[0].wrapping_add(incr as u32);
+                    self.row_d.u32x4[0] = self.row_d.u32x4[0].wrapping_add(increment as u32);
                 }
             }
         }
@@ -166,7 +175,9 @@ where
 
     #[inline]
     fn increment_ietf(&mut self) {
-        unsafe { self.row_d.u32x4[0] = self.row_d.u32x4[0].wrapping_add(DEPTH as u32) }
+        unsafe {
+            self.row_d.u32x4[0] = self.row_d.u32x4[0].wrapping_add(DEPTH as u32);
+        }
     }
 
     #[inline]

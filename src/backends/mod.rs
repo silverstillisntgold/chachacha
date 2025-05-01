@@ -31,8 +31,8 @@ cfg_if::cfg_if! {
         }
     // NEON on ARM32 is both unsound and gated behind nightly.
     } else if #[cfg(all(
-        target_feature = "neon",
-        any(target_arch = "aarch64", target_arch = "arm64ec")
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_feature = "neon"
     ))] {
         pub mod neon;
         pub use neon::Matrix;

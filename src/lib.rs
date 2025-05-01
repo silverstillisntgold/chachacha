@@ -78,7 +78,11 @@ TODO
 
 #![no_std]
 #![cfg_attr(
-    all(feature = "nightly", any(target_arch = "x86_64", target_arch = "x86")),
+    all(
+        feature = "nightly",
+        any(target_arch = "x86_64", target_arch = "x86"),
+        target_feature = "avx512f"
+    ),
     feature(stdarch_x86_avx512)
 )]
 
@@ -96,17 +100,17 @@ use backends::Matrix;
 use rounds::*;
 use variations::*;
 
-pub use util::{BUF_LEN_U8, BUF_LEN_U64, SEED_LEN_U8, SEED_LEN_U32, SEED_LEN_U64};
-
 type ChaCha<R, V> = ChaChaCore<Matrix, R, V>;
+
+pub type ChaCha8Djb = ChaCha<R8, Djb>;
+pub type ChaCha12Djb = ChaCha<R12, Djb>;
+pub type ChaCha20Djb = ChaCha<R20, Djb>;
 
 pub type ChaCha8Ietf = ChaCha<R8, Ietf>;
 pub type ChaCha12Ietf = ChaCha<R12, Ietf>;
 pub type ChaCha20Ietf = ChaCha<R20, Ietf>;
 
-pub type ChaCha8Djb = ChaCha<R8, Djb>;
-pub type ChaCha12Djb = ChaCha<R12, Djb>;
-pub type ChaCha20Djb = ChaCha<R20, Djb>;
+pub use util::{BUF_LEN_U8, BUF_LEN_U64, SEED_LEN_U8, SEED_LEN_U32, SEED_LEN_U64};
 
 #[cfg(test)]
 mod tests {

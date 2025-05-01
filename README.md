@@ -1,4 +1,4 @@
-# ChaChaCha: ChaCha with extra Cha
+# ChaChaCha: ChaCha with a little extra Cha
 
 Extremely fast chacha implementation. Primarily made for use in the [`ya-rand`] crate,
 but just as usable anywhere else you might want to use Chacha. Generally speaking you don't want

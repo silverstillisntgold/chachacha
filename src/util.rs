@@ -18,14 +18,14 @@ pub const MATRIX_SIZE_U8: usize = MATRIX_SIZE_U32 * size_of::<u32>();
 /// Size (in 32-bit integers) of a reference ChaCha matrix.
 pub const MATRIX_SIZE_U32: usize = COLUMNS * ROWS;
 
-/// The amount of distinct Chacha blocks we process in parallel.
+/// The amount of distinct ChaCha blocks we process in parallel.
 pub const DEPTH: usize = 4;
 /// Standard constant used in all ChaCha implementations.
 pub const ROW_A: Row = Row {
     u8x16: *b"expand 32-byte k",
 };
 
-/// Wrapper for the raw data of a Chacha row. In a reference
+/// Wrapper for the raw data of a ChaCha row. In a reference
 /// implementation this would just be the `u32x4` field, but having
 /// `u64x2` is useful for working with a 64-bit counter and `u8x16`
 /// is useful for some tests. `u16x8` is included for completeness.
@@ -65,7 +65,7 @@ pub trait Machine: Add<Output = Self> + Clone {
     /// Not to be used directly.
     fn new_ietf(state: &ChaChaNaked) -> Self;
 
-    /// Increments the counter of each Chacha instance in the current `Machine`.
+    /// Increments the counter of each ChaCha instance in the current `Machine`.
     #[inline]
     fn increment<V: Variant>(&mut self) {
         match V::VAR {
@@ -80,7 +80,7 @@ pub trait Machine: Add<Output = Self> + Clone {
     /// Not to be used directly.
     fn increment_ietf(&mut self);
 
-    /// Performs the Chacha double round operation on all underlying instances.
+    /// Performs the standard ChaCha double round operation on all underlying instances.
     fn double_round(&mut self);
 
     /// Turns the current state of the `Machine` into it's byte representation.
