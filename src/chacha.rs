@@ -67,18 +67,30 @@ where
     V: Variant,
 {
     #[inline]
-    pub fn new<T: Into<Self>>(state: T) -> Self {
+    pub fn new<T>(state: T) -> Self
+    where
+        T: Into<Self>,
+    {
         state.into()
     }
 
+    /// Fills `dst` with bytes from the output of `self`.
+    ///
+    /// SAFETY: `T` must be valid as nothing more than a collection of bytes.
+    /// Integer types are the simplest example of this, but groupings of integer types
+    /// likely fall under the same umbrella. `T` is constrained on [`Copy`] to make it
+    /// more difficult to misuse this, but caution is still required.
     #[inline]
-    pub unsafe fn fill_raw<T>(&mut self, dst: &mut [T]) {
-        let data = dst.as_mut_ptr().cast();
-        let len = dst.len() * size_of::<T>();
-        let dst_as_bytes = unsafe { from_raw_parts_mut(data, len) };
+    pub unsafe fn fill_raw<T: Copy>(&mut self, dst: &mut [T]) {
+        let dst_as_bytes = unsafe {
+            let data = dst.as_mut_ptr().cast();
+            let len = dst.len() * size_of::<T>();
+            from_raw_parts_mut(data, len)
+        };
         self.fill(dst_as_bytes);
     }
 
+    /// Fills `dst` with bytes from the output of `self`.
     #[inline(never)]
     pub fn fill(&mut self, dst: &mut [u8]) {
         let mut machine = M::new::<V>(self.get_naked());

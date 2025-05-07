@@ -50,7 +50,7 @@ pub struct ChaChaNaked {
 /// Core trait which must be implemented for all supported architectures.
 pub trait Machine: Add<Output = Self> + Clone {
     /// Creates a new `Machine` by broadcasting the provided `ChaChaNaked`
-    /// to `DEPTH` instances and incrementing the counters.
+    /// to `DEPTH` instances and incrementing the counters accordingly.
     #[inline]
     fn new<V: Variant>(state: &ChaChaNaked) -> Self {
         match V::VAR {
