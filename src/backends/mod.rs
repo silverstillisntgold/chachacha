@@ -1,5 +1,5 @@
 /*!
-Submodule containing all the non-portable shit. Only explicitly re-exports the widest
+Module containing all the non-portable shit. Only explicitly re-exports the widest
 implementation available as the definitive `Matrix` for the entire submodule, but still enables
 whatever other modules are available on the target system. This is done for testing purposes,
 and none of it is accessible by the end-user of this crate.
@@ -15,10 +15,9 @@ After it has returned the result, the counter of that instance will then be 70, 
 of a ChaCha round. The last 2 integers are used as a way of differentiating between instances that might
 have the same key/seed values, and are called the "nonce".
 
-This is the layout of the original variant proposed by the author of ChaCha, Daniel J. Bernstein, and below
-is a visual representation.
-This layout enables 2<sup>320</sup> unique key/nonce combinations, each providing 1 ZiB of output before
-repeating.
+This is the layout of the original variant proposed by the author of ChaCha, Daniel J. Bernstein.
+Below is a visual representation. This layout enables 2<sup>320</sup> unique key/nonce combinations,
+each providing 1 ZiB of output before repeating.
 
 ```text
 "expa"   "nd 3"  "2-by"  "te k"
@@ -35,8 +34,8 @@ API compatability with the other impls. The result isn't as fast as the manually
 better than running a pure reference impl four times sequentially.
 
 The vectorized variants all use [this paper] as a general guide, with lots of experimentation/testing to fill
-in the gaps. [This commit] is used as a reference for ordering in the diagonalization methods. Ordering doesn't seem
-to make any difference on modern machines, but this should hopefully prevent issues with older CPUs.
+in the gaps. [This commit] is used as a reference for ordering in the diagonalization methods. Ordering doesn't
+seem to make any difference on modern machines, but this should hopefully prevent issues with older CPUs.
 
 [reference implementation]: https://en.wikipedia.org/wiki/Salsa20#ChaCha_variant
 [this paper]: https://eprint.iacr.org/2013/759
@@ -62,12 +61,10 @@ cfg_if::cfg_if! {
             } else if #[cfg(target_feature = "sse2")] {
                 pub use sse2::Matrix;
             } else {
-                compile_error!(
-                    "building x86 programs without support for sse2 may introduce undefined behavior"
-                );
+                compile_error!("building for x86 without sse2 may introduce undefined behavior");
             }
         }
-    // NEON on ARM32 is both unsound and gated behind nightly.
+    // Neon on 32-bit Arm is both unsound and gated behind nightly.
     } else if #[cfg(all(
         any(target_arch = "aarch64", target_arch = "arm64ec"),
         target_feature = "neon"

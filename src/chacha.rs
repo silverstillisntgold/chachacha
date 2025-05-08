@@ -1,3 +1,11 @@
+/*!
+Module containing the [`ChaChaCore`] type, which as it's name suggests, is the core type used
+to abstract the ChaCha algorithm to the most powerful vectorization model available.
+*/
+
+// Pointless to zero memory we're going to immediately overwrite,
+// but rust complains about leaving it uninitialized because it can't
+// tell we're filling it before it's eventually used.
 #![allow(invalid_value)]
 
 use crate::rounds::*;
@@ -76,12 +84,15 @@ where
 
     /// Fills `dst` with bytes from the output of `self`.
     ///
-    /// SAFETY: `T` must be valid as nothing more than a collection of bytes.
-    /// Integer types are the simplest example of this, but groupings of integer types
-    /// likely fall under the same umbrella. `T` is constrained on [`Copy`] to make it
-    /// more difficult to misuse this, but caution is still required.
+    /// # Safety
+    ///
+    /// `T` must be valid as nothing more than a collection of bytes.
+    /// Integer types are the simplest example of this, but structs of integer types
+    /// likely fall under the same umbrella. `T` is constrained by [`Copy`] to make it
+    /// more difficult to misuse this method, but caution is still required.
     #[inline]
     pub unsafe fn fill_raw<T: Copy>(&mut self, dst: &mut [T]) {
+        // SAFETY: The caller has promised not to be a fucking dumbass.
         let dst_as_bytes = unsafe {
             let data = dst.as_mut_ptr().cast();
             let len = dst.len() * size_of::<T>();

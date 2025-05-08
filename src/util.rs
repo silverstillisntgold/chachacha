@@ -1,3 +1,7 @@
+/*!
+Module containing useful constants/structs and the core [`Machine`] trait.
+*/
+
 use crate::variations::*;
 use core::ops::Add;
 

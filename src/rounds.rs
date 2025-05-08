@@ -1,3 +1,8 @@
+/*!
+Module containing the most commonly used ChaCha round counts. It would technically be possible to use
+any amount of rounds, but it's just not reasonable or worthwhile for any application.
+*/
+
 pub trait DoubleRounds {
     const COUNT: usize;
 }
