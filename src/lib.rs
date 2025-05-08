@@ -1,9 +1,8 @@
 /*!
 # ChaChaCha: ChaCha with a little extra Cha
 
-Extremely fast chacha implementation. Primarily made for use in the [`ya-rand`] crate,
-but just as usable anywhere else you might want to use Chacha. Generally speaking you don't want
-to use Chacha directly, as it's normally paired with Poly1305 for authentication.
+Extremely fast chacha implementation. Primarily made for use in the [`ya-rand`] crate, but should
+be just as usable anywhere else you might want to use Chacha.
 
 Documentation is minimal at the moment (working on it), and the public API needs significant
 improvement (it's kind of dogshit right now).
@@ -11,7 +10,6 @@ improvement (it's kind of dogshit right now).
 [`ya-rand`]: https://crates.io/crates/ya-rand
 */
 
-#![no_std]
 #![cfg_attr(
     all(
         feature = "nightly",
@@ -20,6 +18,7 @@ improvement (it's kind of dogshit right now).
     ),
     feature(stdarch_x86_avx512)
 )]
+#![no_std]
 #![warn(missing_docs)]
 
 #[cfg(test)]
@@ -31,25 +30,25 @@ mod rounds;
 mod util;
 mod variations;
 
-use self::chacha::ChaChaCore;
 use backends::Matrix;
+use chacha::ChaChaCore;
 use rounds::*;
 use variations::*;
 
 type ChaCha<R, V> = ChaChaCore<Matrix, R, V>;
 
-/// ChaCha with 8 rounds and a 64-bit counter.
+/// ChaCha with 8 rounds, a 64-bit counter, and a 64-bit nonce.
 pub type ChaCha8Djb = ChaCha<R8, Djb>;
-/// ChaCha with 12 rounds and a 64-bit counter.
+/// ChaCha with 12 rounds, a 64-bit counter, and a 64-bit nonce.
 pub type ChaCha12Djb = ChaCha<R12, Djb>;
-/// ChaCha with 20 rounds and a 64-bit counter.
+/// ChaCha with 20 rounds, a 64-bit counter, and a 64-bit nonce.
 pub type ChaCha20Djb = ChaCha<R20, Djb>;
 
-/// ChaCha with 8 rounds and a 32-bit counter.
+/// ChaCha with 8 rounds, a 32-bit counter, and a 96-bit nonce.
 pub type ChaCha8Ietf = ChaCha<R8, Ietf>;
-/// ChaCha with 12 rounds and a 32-bit counter.
+/// ChaCha with 12 rounds, a 32-bit counter, and a 96-bit nonce.
 pub type ChaCha12Ietf = ChaCha<R12, Ietf>;
-/// ChaCha with 20 rounds and a 32-bit counter.
+/// ChaCha with 20 rounds, a 32-bit counter, and a 96-bit nonce.
 pub type ChaCha20Ietf = ChaCha<R20, Ietf>;
 
 pub use util::{BUF_LEN_U8, BUF_LEN_U64, SEED_LEN_U8, SEED_LEN_U32, SEED_LEN_U64};

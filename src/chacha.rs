@@ -14,7 +14,6 @@ use crate::variations::*;
 use core::marker::PhantomData;
 use core::mem::{MaybeUninit, transmute};
 use core::ptr::copy_nonoverlapping;
-use core::slice::from_raw_parts_mut;
 
 #[repr(C)]
 pub struct ChaChaCore<M, R, V> {
@@ -75,30 +74,35 @@ where
     V: Variant,
 {
     #[inline]
-    pub fn new<T>(state: T) -> Self
-    where
-        T: Into<Self>,
-    {
-        state.into()
-    }
-
-    /// Fills `dst` with bytes from the output of `self`.
-    ///
-    /// # Safety
-    ///
-    /// `T` must be valid as nothing more than a collection of bytes.
-    /// Integer types are the simplest example of this, but structs of integer types
-    /// likely fall under the same umbrella. `T` is constrained by [`Copy`] to make it
-    /// more difficult to misuse this method, but caution is still required.
-    #[inline]
-    pub unsafe fn fill_raw<T: Copy>(&mut self, dst: &mut [T]) {
-        // SAFETY: The caller has promised not to be a fucking dumbass.
-        let dst_as_bytes = unsafe {
-            let data = dst.as_mut_ptr().cast();
-            let len = dst.len() * size_of::<T>();
-            from_raw_parts_mut(data, len)
+    pub fn new(key: [u32; 8], counter: u64, nonce: [u32; 3]) -> Self {
+        let row_b = Row {
+            u32x4: [key[0], key[1], key[2], key[3]],
         };
-        self.fill(dst_as_bytes);
+        let row_c = Row {
+            u32x4: [key[4], key[5], key[6], key[7]],
+        };
+        let row_d = match V::VAR {
+            Variants::Djb => {
+                let nonce = unsafe { transmute([nonce[0], nonce[1]]) };
+                Row {
+                    u64x2: [counter, nonce],
+                }
+            }
+            Variants::Ietf => {
+                let counter = counter as u32;
+                Row {
+                    u32x4: [counter, nonce[0], nonce[1], nonce[2]],
+                }
+            }
+        };
+        Self {
+            row_b,
+            row_c,
+            row_d,
+            _m: PhantomData,
+            _r: PhantomData,
+            _v: PhantomData,
+        }
     }
 
     /// Fills `dst` with bytes from the output of `self`.

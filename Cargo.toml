@@ -1,6 +1,6 @@
 [package]
 name = "chachacha"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 description = "SIMD optimized implementations of the Chacha stream cipher"
 documentation = "https://docs.rs/chachacha"
