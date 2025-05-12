@@ -18,6 +18,8 @@ jobs:
         toolchain: ${{ matrix.toolchain }}
     - name: Enable full CPU feature set
       run: echo "RUSTFLAGS=-C target-cpu=native" >> "$GITHUB_ENV"
+    - name: Check formatting
+      run: cargo fmt --check
     - name: Update dependencies
       run: cargo update
     - name: Run tests (stable)
