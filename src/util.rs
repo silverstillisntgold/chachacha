@@ -42,8 +42,9 @@ pub union Row {
     pub u64x2: [u64; 2],
 }
 
-/// `ChaChaCore` without the `PhantomData` types. Makes concrete
-/// implementations of `Machine` less verbose.
+/// `ChaChaCore` without the `PhantomData` types.
+///
+/// Makes concrete implementations of `Machine` less verbose.
 #[repr(C)]
 pub struct ChaChaNaked {
     pub row_b: Row,
@@ -87,6 +88,6 @@ pub trait Machine: Add<Output = Self> + Clone {
     /// Performs the standard ChaCha double round operation on all underlying instances.
     fn double_round(&mut self);
 
-    /// Turns the current state of the `Machine` into it's byte representation.
+    /// Transmutes the current state of `Machine` into it's byte representation.
     fn fetch_result(self, buf: &mut [u8; BUF_LEN_U8]);
 }
