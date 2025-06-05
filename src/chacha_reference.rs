@@ -13,22 +13,24 @@ use crate::rounds::*;
 use crate::util::*;
 use crate::variations::*;
 use core::iter::repeat_with;
+use core::marker::PhantomData;
 use core::mem::transmute;
 use core::ops::Add;
 
 type ChaChaMatrix = [u32; MATRIX_SIZE_U32];
 type ChaChaResult = [u8; MATRIX_SIZE_U8];
 
-#[derive(Clone)]
 #[repr(C)]
-pub struct ChaCha {
+pub struct ChaCha<R, V> {
     row_a: Row,
     row_b: Row,
     row_c: Row,
     row_d: Row,
+    _r: PhantomData<R>,
+    _v: PhantomData<V>,
 }
 
-impl Add for ChaCha {
+impl<R, V> Add for ChaCha<R, V> {
     type Output = ChaChaMatrix;
 
     #[inline]
@@ -42,7 +44,21 @@ impl Add for ChaCha {
     }
 }
 
-impl From<u8> for ChaCha {
+impl<R, V> Clone for ChaCha<R, V> {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            row_a: self.row_a,
+            row_b: self.row_b,
+            row_c: self.row_c,
+            row_d: self.row_d,
+            _r: PhantomData,
+            _v: PhantomData,
+        }
+    }
+}
+
+impl<R, V> From<u8> for ChaCha<R, V> {
     #[inline]
     fn from(value: u8) -> Self {
         let mut result = ChaCha::from([value; SEED_LEN_U8]);
@@ -54,7 +70,7 @@ impl From<u8> for ChaCha {
     }
 }
 
-impl From<[u8; SEED_LEN_U8]> for ChaCha {
+impl<R, V> From<[u8; SEED_LEN_U8]> for ChaCha<R, V> {
     #[inline]
     fn from(value: [u8; SEED_LEN_U8]) -> Self {
         const SEED_LEN_ROW: usize = SEED_LEN_U8 / size_of::<Row>();
@@ -64,11 +80,13 @@ impl From<[u8; SEED_LEN_U8]> for ChaCha {
             row_b: rows[0],
             row_c: rows[1],
             row_d: rows[2],
+            _r: PhantomData,
+            _v: PhantomData,
         }
     }
 }
 
-impl ChaCha {
+impl<R: DoubleRounds, V: Variant> ChaCha<R, V> {
     #[inline]
     fn quarter_round(&mut self, a: usize, b: usize, c: usize, d: usize) {
         let matrix: &mut ChaChaMatrix = unsafe { transmute(self) };
@@ -108,15 +126,15 @@ impl ChaCha {
     }
 
     #[inline]
-    pub fn fill<R: DoubleRounds, V: Variant>(&mut self, dst: &mut [u8]) {
-        let src = repeat_with(|| self.get_block::<R, V>()).flatten();
+    pub fn fill(&mut self, dst: &mut [u8]) {
+        let src = repeat_with(|| self.get_block()).flatten();
         dst.iter_mut().zip(src).for_each(|(dst_val, src_val)| {
             *dst_val = src_val;
         });
     }
 
     #[inline(never)]
-    pub fn get_block<R: DoubleRounds, V: Variant>(&mut self) -> ChaChaResult {
+    pub fn get_block(&mut self) -> ChaChaResult {
         let mut cur = self.clone();
 
         for _ in 0..R::COUNT {
@@ -145,12 +163,10 @@ impl ChaCha {
 
 #[test]
 fn reference_8_rounds() {
-    let next_block = |c: &mut ChaCha| c.get_block::<R8, Djb>();
-
     // TC1: All zero key and IV.
-    let mut chacha = ChaCha::from(0);
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let mut chacha = ChaCha::<R8, Djb>::from(0);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -177,8 +193,8 @@ fn reference_8_rounds() {
     unsafe {
         chacha.row_b.u8x16[0] = 1;
     }
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -205,8 +221,8 @@ fn reference_8_rounds() {
     unsafe {
         chacha.row_d.u8x16[8] = 1;
     }
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -230,8 +246,8 @@ fn reference_8_rounds() {
 
     // TC4: All bits in key and IV are set.
     chacha = ChaCha::from(0xFF);
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -255,8 +271,8 @@ fn reference_8_rounds() {
 
     // TC5: Every even bit set in key and IV.
     chacha = ChaCha::from(0x55);
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -280,8 +296,8 @@ fn reference_8_rounds() {
 
     // TC6: Every odd bit set in key and IV.
     chacha = ChaCha::from(0xAA);
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -310,8 +326,8 @@ fn reference_8_rounds() {
         0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0f, 0x1e, 0x2d, 0x3c, 0x4b,
         0x5a, 0x69, 0x78,
     ]);
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -340,8 +356,8 @@ fn reference_8_rounds() {
         0x97, 0x5d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1a, 0xda, 0x31, 0xd5, 0xcf,
         0x68, 0x82, 0x21,
     ]);
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -366,12 +382,10 @@ fn reference_8_rounds() {
 
 #[test]
 fn reference_12_rounds() {
-    let next_block = |c: &mut ChaCha| c.get_block::<R12, Djb>();
-
     // TC1: All zero key and IV.
-    let mut chacha = ChaCha::from(0);
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let mut chacha = ChaCha::<R12, Djb>::from(0);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -398,8 +412,8 @@ fn reference_12_rounds() {
     unsafe {
         chacha.row_b.u8x16[0] = 1;
     }
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -426,8 +440,8 @@ fn reference_12_rounds() {
     unsafe {
         chacha.row_d.u8x16[8] = 1;
     }
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -451,8 +465,8 @@ fn reference_12_rounds() {
 
     // TC4: All bits in key and IV are set.
     chacha = ChaCha::from(0xFF);
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -476,8 +490,8 @@ fn reference_12_rounds() {
 
     // TC5: Every even bit set in key and IV.
     chacha = ChaCha::from(0x55);
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -501,8 +515,8 @@ fn reference_12_rounds() {
 
     // TC6: Every odd bit set in key and IV.
     chacha = ChaCha::from(0xAA);
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -531,8 +545,8 @@ fn reference_12_rounds() {
         0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0f, 0x1e, 0x2d, 0x3c, 0x4b,
         0x5a, 0x69, 0x78,
     ]);
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -561,8 +575,8 @@ fn reference_12_rounds() {
         0x97, 0x5d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1a, 0xda, 0x31, 0xd5, 0xcf,
         0x68, 0x82, 0x21,
     ]);
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -587,12 +601,10 @@ fn reference_12_rounds() {
 
 #[test]
 fn reference_20_rounds() {
-    let next_block = |c: &mut ChaCha| c.get_block::<R20, Djb>();
-
     // TC1: All zero key and IV.
-    let mut chacha = ChaCha::from(0);
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let mut chacha = ChaCha::<R20, Djb>::from(0);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -619,8 +631,8 @@ fn reference_20_rounds() {
     unsafe {
         chacha.row_b.u8x16[0] = 1;
     }
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -647,8 +659,8 @@ fn reference_20_rounds() {
     unsafe {
         chacha.row_d.u8x16[8] = 1;
     }
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -672,8 +684,8 @@ fn reference_20_rounds() {
 
     // TC4: All bits in key and IV are set.
     chacha = ChaCha::from(0xFF);
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -697,8 +709,8 @@ fn reference_20_rounds() {
 
     // TC5: Every even bit set in key and IV.
     chacha = ChaCha::from(0x55);
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -722,8 +734,8 @@ fn reference_20_rounds() {
 
     // TC6: Every odd bit set in key and IV.
     chacha = ChaCha::from(0xAA);
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -752,8 +764,8 @@ fn reference_20_rounds() {
         0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0f, 0x1e, 0x2d, 0x3c, 0x4b,
         0x5a, 0x69, 0x78,
     ]);
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [
@@ -782,8 +794,8 @@ fn reference_20_rounds() {
         0x97, 0x5d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1a, 0xda, 0x31, 0xd5, 0xcf,
         0x68, 0x82, 0x21,
     ]);
-    let block_1 = next_block(&mut chacha);
-    let block_2 = next_block(&mut chacha);
+    let block_1 = chacha.get_block();
+    let block_2 = chacha.get_block();
     assert_eq!(
         block_1,
         [

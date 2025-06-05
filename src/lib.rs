@@ -4,9 +4,6 @@
 Extremely fast chacha implementation. Primarily made for use in the [`ya-rand`] crate, but should
 be just as usable anywhere else you might want to use Chacha.
 
-Documentation is minimal at the moment (working on it), and the public API needs significant
-improvement (it's kind of dogshit right now).
-
 [`ya-rand`]: https://crates.io/crates/ya-rand
 */
 
@@ -257,10 +254,10 @@ mod tests {
                 seed_ref[8] = u32::MAX - 7;
             }
             let mut chacha = ChaChaCore::<M, R, V>::from(seed);
-            let mut chacha_ref = ChaChaRef::from(seed);
+            let mut chacha_ref = ChaChaRef::<R, V>::from(seed);
 
             let chacha_iter = repeat_with(|| chacha.get_block()).take(TEST_LEN).flatten();
-            let chacha_ref_iter = repeat_with(|| chacha_ref.get_block::<R, V>())
+            let chacha_ref_iter = repeat_with(|| chacha_ref.get_block())
                 .take(TEST_LEN_REF)
                 .flatten();
             chacha_iter
@@ -273,7 +270,7 @@ mod tests {
                 let mut buf = [0; BIG_IF_TRU];
                 let mut buf_ref = [0; BIG_IF_TRU];
                 chacha.fill(&mut buf[..size]);
-                chacha_ref.fill::<R, V>(&mut buf_ref[..size]);
+                chacha_ref.fill(&mut buf_ref[..size]);
                 assert_eq!(buf, buf_ref);
             }
         }
