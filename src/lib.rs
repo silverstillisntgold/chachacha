@@ -24,14 +24,6 @@ assert!(!all_zeros);
 [`ya-rand`]: https://crates.io/crates/ya-rand
 */
 
-#![cfg_attr(
-    all(
-        feature = "nightly",
-        any(target_arch = "x86_64", target_arch = "x86"),
-        target_feature = "avx512f"
-    ),
-    feature(stdarch_x86_avx512)
-)]
 #![deny(missing_docs)]
 #![no_std]
 
@@ -122,37 +114,37 @@ mod tests {
         test_chacha::<neon::Matrix, R20, Ietf>();
     }
 
-    #[cfg(all(feature = "nightly", target_feature = "avx512f"))]
+    #[cfg(target_feature = "avx512f")]
     #[test]
     fn chacha_8_djb_avx512() {
         test_chacha::<avx512::Matrix, R8, Djb>();
     }
 
-    #[cfg(all(feature = "nightly", target_feature = "avx512f"))]
+    #[cfg(target_feature = "avx512f")]
     #[test]
     fn chacha_8_ietf_avx512() {
         test_chacha::<avx512::Matrix, R8, Ietf>();
     }
 
-    #[cfg(all(feature = "nightly", target_feature = "avx512f"))]
+    #[cfg(target_feature = "avx512f")]
     #[test]
     fn chacha_12_djb_avx512() {
         test_chacha::<avx512::Matrix, R12, Djb>();
     }
 
-    #[cfg(all(feature = "nightly", target_feature = "avx512f"))]
+    #[cfg(target_feature = "avx512f")]
     #[test]
     fn chacha_12_ietf_avx512() {
         test_chacha::<avx512::Matrix, R12, Ietf>();
     }
 
-    #[cfg(all(feature = "nightly", target_feature = "avx512f"))]
+    #[cfg(target_feature = "avx512f")]
     #[test]
     fn chacha_20_djb_avx512() {
         test_chacha::<avx512::Matrix, R20, Djb>();
     }
 
-    #[cfg(all(feature = "nightly", target_feature = "avx512f"))]
+    #[cfg(target_feature = "avx512f")]
     #[test]
     fn chacha_20_ietf_avx512() {
         test_chacha::<avx512::Matrix, R20, Ietf>();
