@@ -67,15 +67,15 @@ cfg_if::cfg_if! {
                 compile_error!("targeting x86 without sse2 is unsupported");
             }
         }
-    // Neon on 32-bit Arm is both unsound and gated behind nightly. I'm pretty
-    // sure 64-bit Arm enables Neon instructions by default but we check anyway
-    // in case some dumbass has disabled them.
-    } else if #[cfg(all(
-        any(target_arch = "aarch64", target_arch = "arm64ec"),
-        target_feature = "neon"
-    ))] {
-        pub mod neon;
-        pub use neon::Matrix;
+    } else if #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))] {
+        cfg_if::cfg_if! {
+            if #[cfg(target_feature = "neon")] {
+                pub mod neon;
+                pub use neon::Matrix;
+            } else {
+                compile_error!("neon is a default feature of arm64");
+            }
+        }
     } else {
         pub use soft::Matrix;
     }
