@@ -20,9 +20,7 @@ pub struct ChaChaCore<M, R, V> {
     row_b: Row,
     row_c: Row,
     row_d: Row,
-    _m: PhantomData<M>,
-    _r: PhantomData<R>,
-    _v: PhantomData<V>,
+    _phantom: PhantomData<(M, R, V)>,
 }
 
 impl<M, R, V> From<u8> for ChaChaCore<M, R, V> {
@@ -76,8 +74,11 @@ where
     /// Creates a new ChaCha instace.
     ///
     /// The contents of `key` will always be moved into the new instance unmodifed,
-    /// but `key` and `counter` will be changed to fit the specification of the `Variant`
-    /// used. [`Djb`] will use all of `counter` and only the first two values in `nonce`.
+    /// but `counter` and `nonce` will be changed to fit the specification of the `Variant`
+    /// used.
+    ///
+    /// [`Djb`] will use all of `counter` and only the first two values in `nonce`.
+    ///
     /// [`Ietf`] will truncate `counter` to a `u32` and use all values in `nonce`.
     #[inline]
     pub fn new(key: [u32; 8], counter: u64, nonce: [u32; 3]) -> Self {
@@ -105,9 +106,7 @@ where
             row_b,
             row_c,
             row_d,
-            _m: PhantomData,
-            _r: PhantomData,
-            _v: PhantomData,
+            _phantom: PhantomData,
         }
     }
 
@@ -127,25 +126,25 @@ where
             unsafe {
                 copy_nonoverlapping(buf.as_ptr(), rem.as_mut_ptr(), rem.len());
             }
-            // Normally, `ChaChaCore` is incremented by `DEPTH` after each call to ChaChaCore::chacha, but
-            // this approach fails to maintain parity with reference ChaCha implementations when `dst` has
-            // a length which isn't a perfect multiple of `BUF_LEN_U8`.
-            // Because we are processesing four ChaCha instances at once, we meed to make sure the counter
-            // is set to the value just beyond the instance whose data we (even just partially) consumed.
-            // For values of rem.len(), these are the mappings we need:
-            // (0,64] --> 1 (only data from the first ChaCha instance was used)
-            // (64,128] --> 2 (data from the first two ChaCha instances was used)
-            // (128,192] --> 3 (data from the first three ChaCha instances was used)
-            // (192,256] --> 4 (data from all ChaCha instances was used)
-            let increment = rem.len().div_ceil(MATRIX_SIZE_U8);
-            unsafe {
-                match V::VAR {
-                    Variants::Djb => {
-                        self.row_d.u64x2[0] = self.row_d.u64x2[0].wrapping_add(increment as u64);
-                    }
-                    Variants::Ietf => {
-                        self.row_d.u32x4[0] = self.row_d.u32x4[0].wrapping_add(increment as u32);
-                    }
+        }
+        // Normally, `ChaChaCore` is incremented by `DEPTH` after each call to ChaChaCore::chacha, but
+        // this approach fails to maintain parity with reference ChaCha implementations when `dst` has
+        // a length which isn't a perfect multiple of `BUF_LEN_U8`.
+        // Because we are processesing four ChaCha instances at once, we meed to make sure the counter
+        // is set to the value just beyond the instance whose data we (even just partially) consumed.
+        // For values of rem.len(), these are the mappings we need:
+        // (0,64] --> 1 (only data from the first ChaCha instance was used)
+        // (64,128] --> 2 (data from the first two ChaCha instances was used)
+        // (128,192] --> 3 (data from the first three ChaCha instances was used)
+        // (192,256] --> 4 (data from all ChaCha instances was used)
+        let increment = rem.len().div_ceil(MATRIX_SIZE_U8);
+        unsafe {
+            match V::VAR {
+                Variants::Djb => {
+                    self.row_d.u64x2[0] = self.row_d.u64x2[0].wrapping_add(increment as u64);
+                }
+                Variants::Ietf => {
+                    self.row_d.u32x4[0] = self.row_d.u32x4[0].wrapping_add(increment as u32);
                 }
             }
         }

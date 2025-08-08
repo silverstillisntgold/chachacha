@@ -1,6 +1,6 @@
 [package]
 name = "chachacha"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2024"
 description = "SIMD optimized implementations of the Chacha stream cipher"
 documentation = "https://docs.rs/chachacha"
@@ -8,9 +8,9 @@ repository = "https://github.com/silverstillisntgold/chachacha"
 categories = ["algorithms", "cryptography", "no-std"]
 keywords = ["chacha", "cipher", "simd"]
 license = "MIT"
+rust-version = "1.89"
 
 [package.metadata.docs.rs]
-rustdoc-args = ["--document-private-items"]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]

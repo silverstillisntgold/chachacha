@@ -72,8 +72,8 @@ mod tests {
     use core::iter::repeat_with;
     use core::mem::transmute;
 
-    const TEST_COUNT: usize = 50;
-    const TEST_LEN: usize = 16;
+    const TEST_COUNT: usize = 1 << 6;
+    const TEST_LEN: usize = 1 << 4;
     /// Reference implementation needs 4 times the runs since it
     /// produces a quarter of the output per block operation.
     const TEST_LEN_REF: usize = TEST_LEN * 4;
