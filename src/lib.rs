@@ -278,10 +278,10 @@ mod tests {
                 .for_each(|(a, b)| assert_eq!(a, b));
 
             const BIG_IF_TRU: usize = BUF_LEN_U8 * 2;
-            let size = getrandom::u32().unwrap() as usize % BIG_IF_TRU;
             for _ in 0..TEST_COUNT {
                 let mut buf = [0; BIG_IF_TRU];
                 let mut buf_ref = [0; BIG_IF_TRU];
+                let size = getrandom::u32().unwrap() as usize % BIG_IF_TRU;
                 chacha.fill(&mut buf[..size]);
                 chacha_ref.fill(&mut buf_ref[..size]);
                 assert_eq!(buf, buf_ref);

@@ -9,7 +9,9 @@ use core::ops::Add;
 pub const BUF_LEN_U8: usize = MATRIX_SIZE_U8 * DEPTH;
 /// Size (in 64-bit integers) of a single ChaCha computation.
 pub const BUF_LEN_U64: usize = BUF_LEN_U8 / size_of::<u64>();
+/// Columns present in a standard ChaCha matrix.
 pub const COLUMNS: usize = 4;
+/// Rows present in a standard ChaCha matrix.
 pub const ROWS: usize = 4;
 /// Size (in 8-bit integers) of the raw seed for a ChaCha instance.
 pub const SEED_LEN_U8: usize = (ROWS - 1) * size_of::<Row>();
@@ -85,9 +87,19 @@ pub trait Machine: Add<Output = Self> + Clone {
     /// Not to be used directly.
     fn increment_ietf(&mut self);
 
-    /// Performs the standard ChaCha double round operation on all underlying instances.
+    /// Performs the standard ChaCha double round operation.
     fn double_round(&mut self);
 
-    /// Transmutes the current state of `Machine` into it's byte representation.
+    /// Converts the current `Machine` into raw bytes.
     fn fetch_result(self, buf: &mut [u8; BUF_LEN_U8]);
+
+    /// Xors the current `Machine` raw bytes with `buf`.
+    #[inline]
+    fn xor_result(self, buf: &mut [u8; BUF_LEN_U8]) {
+        let mut tmp = [0; BUF_LEN_U8];
+        self.fetch_result(&mut tmp);
+        for i in 0..BUF_LEN_U8 {
+            buf[i] ^= tmp[i];
+        }
+    }
 }

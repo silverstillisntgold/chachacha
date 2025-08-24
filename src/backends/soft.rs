@@ -1,5 +1,6 @@
 use crate::util::*;
-use core::{mem::transmute, ops::Add};
+use core::mem::transmute;
+use core::ops::Add;
 
 #[derive(Clone)]
 #[repr(C)]

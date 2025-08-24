@@ -1,6 +1,6 @@
 /*!
-Module containing a reference Chacha implementation, which is verified against the reference
-Chacha test vectors (available [here]).
+Module containing a reference ChaCha implementation, which is verified against the reference
+ChaCha test vectors (available [here]).
 
 The tests are only run against the original [`Djb`] variant, but the difference in a simple
 reference implementation like this is trivial (literally a single line of code), so we assume passing
@@ -26,8 +26,7 @@ pub struct ChaCha<R, V> {
     row_b: Row,
     row_c: Row,
     row_d: Row,
-    _r: PhantomData<R>,
-    _v: PhantomData<V>,
+    _phantom: PhantomData<(R, V)>,
 }
 
 impl<R, V> Add for ChaCha<R, V> {
@@ -52,8 +51,7 @@ impl<R, V> Clone for ChaCha<R, V> {
             row_b: self.row_b,
             row_c: self.row_c,
             row_d: self.row_d,
-            _r: PhantomData,
-            _v: PhantomData,
+            _phantom: PhantomData,
         }
     }
 }
@@ -80,8 +78,7 @@ impl<R, V> From<[u8; SEED_LEN_U8]> for ChaCha<R, V> {
             row_b: rows[0],
             row_c: rows[1],
             row_d: rows[2],
-            _r: PhantomData,
-            _v: PhantomData,
+            _phantom: PhantomData,
         }
     }
 }

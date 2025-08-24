@@ -3,7 +3,8 @@ use crate::util::*;
 use core::arch::x86::*;
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::*;
-use core::{mem::transmute, ops::Add};
+use core::mem::transmute;
+use core::ops::Add;
 
 #[derive(Clone)]
 #[repr(C)]

@@ -29,8 +29,8 @@ An alternative layout, suggested by the IETF, uses only a single 32-bit integer 
 and three of them for nonces. Both implementations are provided by this crate.
 
 The soft implementation is the [reference implementation], but batched to (in theory) increase performance and maintain
-API compatability with the other impls. The result isn't as fast as the manually vectorized variants, but is much
-better than running a pure reference impl four times sequentially.
+API compatability with the other impls. The result isn't as fast as the manually vectorized variants, but is
+better than running a pure reference implementation four times sequentially.
 
 The vectorized variants all use [this paper] as a general guide, with lots of experimentation/testing to fill
 in the gaps. [This commit] is used as a reference for ordering in the diagonalization methods. Ordering doesn't
