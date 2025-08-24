@@ -25,7 +25,6 @@ assert!(!all_zeros);
 */
 
 #![allow(clippy::missing_transmute_annotations)]
-#![allow(clippy::uninit_assumed_init)]
 #![deny(missing_docs)]
 #![no_std]
 
