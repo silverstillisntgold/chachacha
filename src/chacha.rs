@@ -6,7 +6,7 @@ to abstract the ChaCha algorithm to the most powerful vectorization model availa
 // Pointless to zero memory we're going to immediately overwrite,
 // but rust complains about leaving it uninitialized because it can't
 // tell we're filling it before it's eventually used.
-#![allow(invalid_value, clippy::uninit_assumed_init)]
+#![allow(clippy::uninit_assumed_init, invalid_value)]
 
 use crate::rounds::*;
 use crate::util::*;

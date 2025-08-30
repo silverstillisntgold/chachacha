@@ -72,6 +72,7 @@ mod tests {
     use super::variations::*;
     use core::iter::repeat_with;
     use core::mem::transmute;
+    use ya_rand::*;
 
     const TEST_COUNT: usize = 1 << 6;
     const TEST_LEN: usize = 1 << 4;
@@ -254,9 +255,10 @@ mod tests {
     }
 
     fn test_chacha<M: Machine, R: DoubleRounds, V: Variant>() {
+        let mut rng = new_rng_secure();
         for i in 0..TEST_COUNT {
             let mut seed = [0; SEED_LEN_U8];
-            getrandom::fill(&mut seed).unwrap();
+            rng.fill_bytes(&mut seed);
             // The difference between the djb/ietf variants is only apparent
             // when index 12 crosses the `u32::MAX` threshold, since that's the
             // point where ietf would only wrap index 12 around to 0, but the
@@ -280,7 +282,7 @@ mod tests {
             for _ in 0..TEST_COUNT {
                 let mut buf = [0; BIG_IF_TRU];
                 let mut buf_ref = [0; BIG_IF_TRU];
-                let size = getrandom::u32().unwrap() as usize % BIG_IF_TRU;
+                let size = rng.usize() % BIG_IF_TRU;
                 chacha.fill(&mut buf[..size]);
                 chacha_ref.fill(&mut buf_ref[..size]);
                 assert_eq!(buf, buf_ref);
