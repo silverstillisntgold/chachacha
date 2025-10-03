@@ -17,4 +17,4 @@ targets = ["x86_64-unknown-linux-gnu"]
 cfg-if = "1"
 
 [dev-dependencies]
-ya-rand = { version = "2", default-features = false, features = ["secure"] }
+ya-rand = { version = "2", default-features = false }

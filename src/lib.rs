@@ -34,6 +34,7 @@ assert!(!all_zeros);
 mod chacha_reference;
 
 mod backends;
+mod backends_v2;
 mod chacha;
 mod rounds;
 mod util;
@@ -255,10 +256,10 @@ mod tests {
     }
 
     fn test_chacha<M: Machine, R: DoubleRounds, V: Variant>() {
-        let mut rng = new_rng_secure();
+        let mut rng = new_rng();
         for i in 0..TEST_COUNT {
             let mut seed = [0; SEED_LEN_U8];
-            rng.fill_bytes(&mut seed);
+            seed.fill_with(|| rng.u8());
             // The difference between the djb/ietf variants is only apparent
             // when index 12 crosses the `u32::MAX` threshold, since that's the
             // point where ietf would only wrap index 12 around to 0, but the
