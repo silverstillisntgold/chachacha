@@ -1,132 +1,94 @@
-use crate::util::*;
-use core::mem::transmute;
-use core::ops::Add;
+use super::{BUF_SIZE, Vector, VectorOps, VectorType};
+use core::ops::{Add, BitOr, BitXor};
 
-#[derive(Clone)]
-#[repr(C)]
-pub struct Matrix {
-    state: [InternalMatrix; DEPTH],
-}
+pub struct Soft;
+impl VectorType for Soft {}
 
-#[derive(Clone, Copy)]
-#[repr(C)]
-union InternalMatrix {
-    raw: [u32; MATRIX_SIZE_U32],
-    rows: [Row; ROWS],
-}
-
-impl Add for Matrix {
+impl Add for Vector<Soft> {
     type Output = Self;
 
-    #[inline]
+    #[inline(always)]
     fn add(mut self, rhs: Self) -> Self::Output {
-        unsafe {
-            for i in 0..self.state.len() {
-                for j in 0..self.state[i].raw.len() {
-                    self.state[i].raw[j] = self.state[i].raw[j].wrapping_add(rhs.state[i].raw[j]);
-                }
-            }
-            self
+        for i in 0..BUF_SIZE {
+            self.inner[i] = self.inner[i].wrapping_add(rhs.inner[i]);
         }
+        self
     }
 }
 
-impl Matrix {
-    #[inline]
-    fn quarter_round(&mut self, a: usize, b: usize, c: usize, d: usize) {
-        unsafe {
-            for matrix in self.state.iter_mut() {
-                matrix.raw[a] = matrix.raw[a].wrapping_add(matrix.raw[b]);
-                matrix.raw[d] ^= matrix.raw[a];
-                matrix.raw[d] = matrix.raw[d].rotate_left(16);
+impl BitOr for Vector<Soft> {
+    type Output = Self;
 
-                matrix.raw[c] = matrix.raw[c].wrapping_add(matrix.raw[d]);
-                matrix.raw[b] ^= matrix.raw[c];
-                matrix.raw[b] = matrix.raw[b].rotate_left(12);
-
-                matrix.raw[a] = matrix.raw[a].wrapping_add(matrix.raw[b]);
-                matrix.raw[d] ^= matrix.raw[a];
-                matrix.raw[d] = matrix.raw[d].rotate_left(8);
-
-                matrix.raw[c] = matrix.raw[c].wrapping_add(matrix.raw[d]);
-                matrix.raw[b] ^= matrix.raw[c];
-                matrix.raw[b] = matrix.raw[b].rotate_left(7);
-            }
+    #[inline(always)]
+    fn bitor(mut self, rhs: Self) -> Self::Output {
+        for i in 0..BUF_SIZE {
+            self.inner[i] |= rhs.inner[i];
         }
+        self
     }
 }
 
-impl Machine for Matrix {
-    #[inline]
-    fn new_djb(state: &ChaChaNaked) -> Self {
-        unsafe {
-            let mut result = Matrix {
-                state: [InternalMatrix {
-                    rows: [ROW_A, state.row_b, state.row_c, state.row_d],
-                }; DEPTH],
-            };
-            result.state[1].rows[3].u64x2[0] = result.state[1].rows[3].u64x2[0].wrapping_add(1);
-            result.state[2].rows[3].u64x2[0] = result.state[2].rows[3].u64x2[0].wrapping_add(2);
-            result.state[3].rows[3].u64x2[0] = result.state[3].rows[3].u64x2[0].wrapping_add(3);
-            result
+impl BitXor for Vector<Soft> {
+    type Output = Self;
+
+    #[inline(always)]
+    fn bitxor(mut self, rhs: Self) -> Self::Output {
+        for i in 0..BUF_SIZE {
+            self.inner[i] ^= rhs.inner[i];
         }
+        self
+    }
+}
+
+impl VectorOps for Vector<Soft> {
+    #[inline(always)]
+    fn shift_left<const IMM8: i64>(mut self) -> Self {
+        for i in 0..BUF_SIZE {
+            self.inner[i] <<= IMM8;
+        }
+        self
     }
 
-    #[inline]
-    fn new_ietf(state: &ChaChaNaked) -> Self {
-        unsafe {
-            let mut result = Matrix {
-                state: [InternalMatrix {
-                    rows: [ROW_A, state.row_b, state.row_c, state.row_d],
-                }; DEPTH],
-            };
-            result.state[1].rows[3].u32x4[0] = result.state[1].rows[3].u32x4[0].wrapping_add(1);
-            result.state[2].rows[3].u32x4[0] = result.state[2].rows[3].u32x4[0].wrapping_add(2);
-            result.state[3].rows[3].u32x4[0] = result.state[3].rows[3].u32x4[0].wrapping_add(3);
-            result
+    #[inline(always)]
+    fn shift_right<const IMM8: i64>(mut self) -> Self {
+        for i in 0..BUF_SIZE {
+            self.inner[i] >>= IMM8;
         }
+        self
     }
 
-    #[inline]
-    fn increment_djb(&mut self) {
-        unsafe {
-            let increment = DEPTH as u64;
-            self.state[0].rows[3].u64x2[0] = self.state[0].rows[3].u64x2[0].wrapping_add(increment);
-            self.state[1].rows[3].u64x2[0] = self.state[1].rows[3].u64x2[0].wrapping_add(increment);
-            self.state[2].rows[3].u64x2[0] = self.state[2].rows[3].u64x2[0].wrapping_add(increment);
-            self.state[3].rows[3].u64x2[0] = self.state[3].rows[3].u64x2[0].wrapping_add(increment);
+    #[inline(always)]
+    fn shuffle_128<const IMM8: i32>(mut self) -> Self {
+        const fn select<const IMM8: i32, const SHIFT: i32>() -> usize {
+            ((IMM8 >> SHIFT) & 3) as usize
         }
-    }
 
-    #[inline]
-    fn increment_ietf(&mut self) {
-        unsafe {
-            let increment = DEPTH as u32;
-            self.state[0].rows[3].u32x4[0] = self.state[0].rows[3].u32x4[0].wrapping_add(increment);
-            self.state[1].rows[3].u32x4[0] = self.state[1].rows[3].u32x4[0].wrapping_add(increment);
-            self.state[2].rows[3].u32x4[0] = self.state[2].rows[3].u32x4[0].wrapping_add(increment);
-            self.state[3].rows[3].u32x4[0] = self.state[3].rows[3].u32x4[0].wrapping_add(increment);
-        }
-    }
+        let old = self.inner;
 
-    #[inline]
-    fn double_round(&mut self) {
-        // Column rounds
-        self.quarter_round(0, 4, 8, 12);
-        self.quarter_round(1, 5, 9, 13);
-        self.quarter_round(2, 6, 10, 14);
-        self.quarter_round(3, 7, 11, 15);
-        // Diagonal rounds
-        self.quarter_round(0, 5, 10, 15);
-        self.quarter_round(1, 6, 11, 12);
-        self.quarter_round(2, 7, 8, 13);
-        self.quarter_round(3, 4, 9, 14);
-    }
+        // First lane
+        self.inner[0] = old[select::<IMM8, 0>()];
+        self.inner[1] = old[select::<IMM8, 2>()];
+        self.inner[2] = old[select::<IMM8, 4>()];
+        self.inner[3] = old[select::<IMM8, 6>()];
 
-    #[inline]
-    fn fetch_result(self, buf: &mut [u8; BUF_LEN_U8]) {
-        unsafe {
-            *buf = transmute(self);
-        }
+        // Second lane
+        self.inner[4] = old[4 + select::<IMM8, 0>()];
+        self.inner[5] = old[4 + select::<IMM8, 2>()];
+        self.inner[6] = old[4 + select::<IMM8, 4>()];
+        self.inner[7] = old[4 + select::<IMM8, 6>()];
+
+        // Third lane
+        self.inner[8] = old[8 + select::<IMM8, 0>()];
+        self.inner[9] = old[8 + select::<IMM8, 2>()];
+        self.inner[10] = old[8 + select::<IMM8, 4>()];
+        self.inner[11] = old[8 + select::<IMM8, 6>()];
+
+        // Fourth lane
+        self.inner[12] = old[12 + select::<IMM8, 0>()];
+        self.inner[13] = old[12 + select::<IMM8, 2>()];
+        self.inner[14] = old[12 + select::<IMM8, 4>()];
+        self.inner[15] = old[12 + select::<IMM8, 6>()];
+
+        self
     }
 }

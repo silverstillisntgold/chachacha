@@ -1,187 +1,111 @@
-use crate::util::*;
-#[cfg(target_arch = "x86")]
-use core::arch::x86::*;
-#[cfg(target_arch = "x86_64")]
+use super::{Vector, VectorOps, VectorType};
 use core::arch::x86_64::*;
 use core::mem::transmute;
-use core::ops::Add;
+use core::ops::{Add, BitOr, BitXor};
 
-const HALF_DEPTH: usize = DEPTH / 2;
+const LOCAL_SIZE: usize = 2;
 
-#[derive(Clone)]
-#[repr(C)]
-pub struct Matrix {
-    state: [[__m256i; ROWS]; HALF_DEPTH],
+#[repr(C, align(64))]
+struct Internal([__m256i; LOCAL_SIZE]);
+
+pub struct AVX2;
+impl VectorType for AVX2 {}
+
+impl From<Internal> for Vector<AVX2> {
+    #[inline(always)]
+    fn from(value: Internal) -> Self {
+        unsafe { transmute(value) }
+    }
 }
 
-impl Add for Matrix {
+impl From<Vector<AVX2>> for Internal {
+    #[inline(always)]
+    fn from(value: Vector<AVX2>) -> Self {
+        unsafe { transmute(value) }
+    }
+}
+
+impl Add for Vector<AVX2> {
     type Output = Self;
 
-    #[inline]
-    fn add(mut self, rhs: Self) -> Self::Output {
+    #[inline(always)]
+    fn add(self, rhs: Self) -> Self::Output {
         unsafe {
-            for i in 0..self.state.len() {
-                for j in 0..self.state[i].len() {
-                    self.state[i][j] = _mm256_add_epi32(self.state[i][j], rhs.state[i][j]);
-                }
+            let mut lhs = Internal::from(self);
+            let rhs = Internal::from(rhs);
+            for i in 0..LOCAL_SIZE {
+                lhs.0[i] = _mm256_add_epi32(lhs.0[i], rhs.0[i]);
             }
-            self
+            lhs.into()
         }
     }
 }
 
-macro_rules! rotate_left_epi32 {
-    ($value:expr, $LEFT_SHIFT:expr) => {{
-        const RIGHT_SHIFT: i32 = 32 - $LEFT_SHIFT;
-        let left_shift = _mm256_slli_epi32($value, $LEFT_SHIFT);
-        let right_shift = _mm256_srli_epi32($value, RIGHT_SHIFT);
-        _mm256_or_si256(left_shift, right_shift)
-    }};
-}
+impl BitOr for Vector<AVX2> {
+    type Output = Self;
 
-impl Matrix {
-    #[inline]
-    fn quarter_round(&mut self) {
+    #[inline(always)]
+    fn bitor(self, rhs: Self) -> Self::Output {
         unsafe {
-            for [a, b, c, d] in self.state.iter_mut() {
-                *a = _mm256_add_epi32(*a, *b);
-                *d = _mm256_xor_si256(*d, *a);
-                *d = rotate_left_epi32!(*d, 16);
-
-                *c = _mm256_add_epi32(*c, *d);
-                *b = _mm256_xor_si256(*b, *c);
-                *b = rotate_left_epi32!(*b, 12);
-
-                *a = _mm256_add_epi32(*a, *b);
-                *d = _mm256_xor_si256(*d, *a);
-                *d = rotate_left_epi32!(*d, 8);
-
-                *c = _mm256_add_epi32(*c, *d);
-                *b = _mm256_xor_si256(*b, *c);
-                *b = rotate_left_epi32!(*b, 7);
+            let mut lhs = Internal::from(self);
+            let rhs = Internal::from(rhs);
+            for i in 0..LOCAL_SIZE {
+                lhs.0[i] = _mm256_or_si256(lhs.0[i], rhs.0[i]);
             }
-        }
-    }
-
-    #[inline]
-    fn make_diagonal(&mut self) {
-        unsafe {
-            for [a, _, c, d] in self.state.iter_mut() {
-                *a = _mm256_shuffle_epi32(*a, 0b_10_01_00_11);
-                *c = _mm256_shuffle_epi32(*c, 0b_00_11_10_01);
-                *d = _mm256_shuffle_epi32(*d, 0b_01_00_11_10);
-            }
-        }
-    }
-
-    #[inline]
-    fn unmake_diagonal(&mut self) {
-        unsafe {
-            for [a, _, c, d] in self.state.iter_mut() {
-                *c = _mm256_shuffle_epi32(*c, 0b_10_01_00_11);
-                *d = _mm256_shuffle_epi32(*d, 0b_01_00_11_10);
-                *a = _mm256_shuffle_epi32(*a, 0b_00_11_10_01);
-            }
+            lhs.into()
         }
     }
 }
 
-impl Machine for Matrix {
-    #[inline]
-    fn new_djb(state: &ChaChaNaked) -> Self {
+impl BitXor for Vector<AVX2> {
+    type Output = Self;
+
+    #[inline(always)]
+    fn bitxor(self, rhs: Self) -> Self::Output {
         unsafe {
-            let mut result = Matrix {
-                state: [[
-                    _mm256_broadcastsi128_si256(transmute(ROW_A)),
-                    _mm256_broadcastsi128_si256(transmute(state.row_b)),
-                    _mm256_broadcastsi128_si256(transmute(state.row_c)),
-                    _mm256_broadcastsi128_si256(transmute(state.row_d)),
-                ]; HALF_DEPTH],
-            };
-            result.state[0][3] =
-                _mm256_add_epi64(result.state[0][3], _mm256_set_epi64x(0, 0, 0, 1));
-            result.state[1][3] =
-                _mm256_add_epi64(result.state[1][3], _mm256_set_epi64x(0, 2, 0, 3));
-            result
+            let mut lhs = Internal::from(self);
+            let rhs = Internal::from(rhs);
+            for i in 0..LOCAL_SIZE {
+                lhs.0[i] = _mm256_xor_si256(lhs.0[i], rhs.0[i]);
+            }
+            lhs.into()
+        }
+    }
+}
+
+impl VectorOps for Vector<AVX2> {
+    #[inline(always)]
+    fn shift_left<const IMM8: i64>(self) -> Self {
+        unsafe {
+            let count = _mm_set1_epi64x(IMM8);
+            let mut lhs = Internal::from(self);
+            for i in 0..LOCAL_SIZE {
+                lhs.0[i] = _mm256_sll_epi32(lhs.0[i], count);
+            }
+            lhs.into()
         }
     }
 
-    #[inline]
-    fn new_ietf(state: &ChaChaNaked) -> Self {
+    #[inline(always)]
+    fn shift_right<const IMM8: i64>(self) -> Self {
         unsafe {
-            let mut result = Matrix {
-                state: [[
-                    _mm256_broadcastsi128_si256(transmute(ROW_A)),
-                    _mm256_broadcastsi128_si256(transmute(state.row_b)),
-                    _mm256_broadcastsi128_si256(transmute(state.row_c)),
-                    _mm256_broadcastsi128_si256(transmute(state.row_d)),
-                ]; HALF_DEPTH],
-            };
-            result.state[0][3] =
-                _mm256_add_epi32(result.state[0][3], _mm256_set_epi32(0, 0, 0, 0, 0, 0, 0, 1));
-            result.state[1][3] =
-                _mm256_add_epi32(result.state[1][3], _mm256_set_epi32(0, 0, 0, 2, 0, 0, 0, 3));
-            result
+            let count = _mm_set1_epi64x(IMM8);
+            let mut lhs = Internal::from(self);
+            for i in 0..LOCAL_SIZE {
+                lhs.0[i] = _mm256_srl_epi32(lhs.0[i], count);
+            }
+            lhs.into()
         }
     }
 
-    #[inline]
-    fn increment_djb(&mut self) {
+    #[inline(always)]
+    fn shuffle_128<const IMM8: i32>(self) -> Self {
         unsafe {
-            let increment = _mm256_set_epi64x(0, DEPTH as i64, 0, DEPTH as i64);
-            self.state[0][3] = _mm256_add_epi64(self.state[0][3], increment);
-            self.state[1][3] = _mm256_add_epi64(self.state[1][3], increment);
-        }
-    }
-
-    #[inline]
-    fn increment_ietf(&mut self) {
-        unsafe {
-            let increment = _mm256_set_epi32(0, 0, 0, DEPTH as i32, 0, 0, 0, DEPTH as i32);
-            self.state[0][3] = _mm256_add_epi32(self.state[0][3], increment);
-            self.state[1][3] = _mm256_add_epi32(self.state[1][3], increment);
-        }
-    }
-
-    #[inline]
-    fn double_round(&mut self) {
-        // Column rounds
-        self.quarter_round();
-        // Diagonal rounds
-        self.make_diagonal();
-        self.quarter_round();
-        self.unmake_diagonal();
-    }
-
-    #[inline]
-    fn fetch_result(self, buf: &mut [u8; BUF_LEN_U8]) {
-        unsafe {
-            *buf = transmute([
-                [
-                    _mm256_extracti128_si256(self.state[0][0], 1),
-                    _mm256_extracti128_si256(self.state[0][1], 1),
-                    _mm256_extracti128_si256(self.state[0][2], 1),
-                    _mm256_extracti128_si256(self.state[0][3], 1),
-                ],
-                [
-                    _mm256_extracti128_si256(self.state[0][0], 0),
-                    _mm256_extracti128_si256(self.state[0][1], 0),
-                    _mm256_extracti128_si256(self.state[0][2], 0),
-                    _mm256_extracti128_si256(self.state[0][3], 0),
-                ],
-                [
-                    _mm256_extracti128_si256(self.state[1][0], 1),
-                    _mm256_extracti128_si256(self.state[1][1], 1),
-                    _mm256_extracti128_si256(self.state[1][2], 1),
-                    _mm256_extracti128_si256(self.state[1][3], 1),
-                ],
-                [
-                    _mm256_extracti128_si256(self.state[1][0], 0),
-                    _mm256_extracti128_si256(self.state[1][1], 0),
-                    _mm256_extracti128_si256(self.state[1][2], 0),
-                    _mm256_extracti128_si256(self.state[1][3], 0),
-                ],
-            ]);
+            let mut lhs = Internal::from(self);
+            for i in 0..LOCAL_SIZE {
+                lhs.0[i] = _mm256_shuffle_epi32(lhs.0[i], IMM8);
+            }
+            lhs.into()
         }
     }
 }

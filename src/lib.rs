@@ -24,7 +24,7 @@ assert!(!all_zeros);
 [`ya-rand`]: https://crates.io/crates/ya-rand
 */
 
-#![allow(clippy::missing_transmute_annotations)]
+#![allow(clippy::missing_transmute_annotations, unused)]
 #![deny(missing_docs)]
 #![no_std]
 
@@ -34,36 +34,35 @@ assert!(!all_zeros);
 mod chacha_reference;
 
 mod backends;
-mod backends_v2;
 mod chacha;
+mod chacha_v2;
 mod rounds;
 mod util;
 mod variations;
 
-use backends::Matrix;
 use chacha::ChaChaCore;
 use rounds::*;
 use variations::*;
 
 pub use util::{BUF_LEN_U8, BUF_LEN_U64, SEED_LEN_U8, SEED_LEN_U32, SEED_LEN_U64};
 
-type ChaCha<R, V> = ChaChaCore<Matrix, R, V>;
+// type ChaCha<R, V> = ChaChaCore<Matrix, R, V>;
 
-/// ChaCha with 8 rounds, a 64-bit counter, and a 64-bit nonce.
-pub type ChaCha8Djb = ChaCha<R8, Djb>;
-/// ChaCha with 12 rounds, a 64-bit counter, and a 64-bit nonce.
-pub type ChaCha12Djb = ChaCha<R12, Djb>;
-/// ChaCha with 20 rounds, a 64-bit counter, and a 64-bit nonce.
-pub type ChaCha20Djb = ChaCha<R20, Djb>;
+// /// ChaCha with 8 rounds, a 64-bit counter, and a 64-bit nonce.
+// pub type ChaCha8Djb = ChaCha<R8, Djb>;
+// /// ChaCha with 12 rounds, a 64-bit counter, and a 64-bit nonce.
+// pub type ChaCha12Djb = ChaCha<R12, Djb>;
+// /// ChaCha with 20 rounds, a 64-bit counter, and a 64-bit nonce.
+// pub type ChaCha20Djb = ChaCha<R20, Djb>;
 
-/// ChaCha with 8 rounds, a 32-bit counter, and a 96-bit nonce.
-pub type ChaCha8Ietf = ChaCha<R8, Ietf>;
-/// ChaCha with 12 rounds, a 32-bit counter, and a 96-bit nonce.
-pub type ChaCha12Ietf = ChaCha<R12, Ietf>;
-/// ChaCha with 20 rounds, a 32-bit counter, and a 96-bit nonce.
-pub type ChaCha20Ietf = ChaCha<R20, Ietf>;
+// /// ChaCha with 8 rounds, a 32-bit counter, and a 96-bit nonce.
+// pub type ChaCha8Ietf = ChaCha<R8, Ietf>;
+// /// ChaCha with 12 rounds, a 32-bit counter, and a 96-bit nonce.
+// pub type ChaCha12Ietf = ChaCha<R12, Ietf>;
+// /// ChaCha with 20 rounds, a 32-bit counter, and a 96-bit nonce.
+// pub type ChaCha20Ietf = ChaCha<R20, Ietf>;
 
-#[cfg(test)]
+/*#[cfg(test)]
 mod tests {
     use super::backends::*;
     use super::chacha::ChaChaCore;
@@ -291,3 +290,4 @@ mod tests {
         }
     }
 }
+*/
