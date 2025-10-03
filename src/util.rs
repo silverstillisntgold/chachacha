@@ -46,7 +46,7 @@ pub union Row {
 
 /// `ChaChaCore` without the `PhantomData` types.
 ///
-/// Makes concrete implementations of `Machine` less verbose.
+/// Makes implementation in `Machine` less verbose.
 #[repr(C)]
 pub struct ChaChaNaked {
     pub row_b: Row,

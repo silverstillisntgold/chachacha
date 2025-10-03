@@ -9,7 +9,7 @@ mod sse2;
 
 use crate::{
     rounds::*,
-    util::{ChaChaNaked, Row},
+    util::{ChaChaNaked, ROW_A, Row},
     variations::*,
 };
 use core::{
@@ -20,27 +20,50 @@ use core::{
 
 const AVX512_REG_SIZE: usize = 512;
 const BUF_SIZE: usize = AVX512_REG_SIZE / i32::BITS as usize;
+const BUF_SIZE_HALF: usize = BUF_SIZE / 2;
+
+#[repr(C, align(64))]
+union Internal {
+    i32x16: [i32; BUF_SIZE],
+    i64x8: [i64; BUF_SIZE_HALF],
+}
+
+impl Deref for Internal {
+    type Target = [i32; BUF_SIZE];
+
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &self.i32x16 }
+    }
+}
+
+impl DerefMut for Internal {
+    #[inline(always)]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { &mut self.i32x16 }
+    }
+}
 
 pub trait VectorType {}
 
 /// Represents a single row of four side-by-side ChaCha instances.
 #[repr(C, align(64))]
 pub struct Vector<T> {
-    inner: [i32; BUF_SIZE],
+    inner: Internal,
     _phantom: PhantomData<T>,
 }
 
-impl<T> Vector<T> {
-    #[inline(always)]
-    pub fn reverse(&mut self) {
-        self.inner.reverse();
-    }
+// impl<T> Vector<T> {
+//     #[inline(always)]
+//     pub fn reverse(&mut self) {
+//         self.inner.reverse();
+//     }
 
-    #[inline(always)]
-    pub fn increment_idx<const IDX: usize>(&mut self) {
-        todo!()
-    }
-}
+//     #[inline(always)]
+//     pub fn increment_idx<const IDX: usize>(&mut self) {
+//         todo!()
+//     }
+// }
 
 macro_rules! rotate_left_epi32 {
     ($vector: expr, $LEFT_SHIFT: expr) => {{
@@ -101,7 +124,33 @@ where
 {
     #[inline(always)]
     pub fn new<V: Variant>(state: &ChaChaNaked) -> Self {
-        todo!()
+        let row_a = Vector::broadcast_row(ROW_A);
+        let row_b = Vector::broadcast_row(state.row_b);
+        let row_c = Vector::broadcast_row(state.row_c);
+        let mut row_d = Vector::broadcast_row(state.row_d);
+
+        // TODO: Potentially use explicit intrinsics for this.
+        match V::VAR {
+            Variants::Djb => unsafe {
+                row_d.inner.i64x8[7] = row_d.inner.i64x8[7].wrapping_add(0);
+                row_d.inner.i64x8[5] = row_d.inner.i64x8[5].wrapping_add(1);
+                row_d.inner.i64x8[3] = row_d.inner.i64x8[3].wrapping_add(2);
+                row_d.inner.i64x8[1] = row_d.inner.i64x8[1].wrapping_add(3);
+            },
+            Variants::Ietf => unsafe {
+                row_d.inner.i32x16[15] = row_d.inner.i32x16[15].wrapping_add(0);
+                row_d.inner.i32x16[11] = row_d.inner.i32x16[11].wrapping_add(1);
+                row_d.inner.i32x16[7] = row_d.inner.i32x16[7].wrapping_add(2);
+                row_d.inner.i32x16[3] = row_d.inner.i32x16[3].wrapping_add(3);
+            },
+        }
+
+        Self {
+            row_a,
+            row_b,
+            row_c,
+            row_d,
+        }
     }
 
     #[inline(always)]

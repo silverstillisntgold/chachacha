@@ -73,7 +73,7 @@ impl VectorOps for Vector<Soft> {
             ((IMM8 >> SHIFT) & 3) as usize
         }
 
-        let old = self.inner;
+        let old = unsafe { self.inner.i32x16 };
 
         // First lane
         self.inner[0] = old[select::<IMM8, 0>()];
