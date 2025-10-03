@@ -7,7 +7,11 @@ mod avx512;
 mod soft;
 mod sse2;
 
-use crate::{rounds::*, util::ChaChaNaked, variations::*};
+use crate::{
+    rounds::*,
+    util::{ChaChaNaked, Row},
+    variations::*,
+};
 use core::{
     marker::PhantomData,
     mem::transmute,
@@ -51,9 +55,8 @@ macro_rules! rotate_left_epi32 {
 pub trait VectorOps:
     Add<Output = Self> + BitOr<Output = Self> + BitXor<Output = Self> + Sized
 {
-    fn broadcast(value: i32) -> Self {
-        unimplemented!()
-    }
+    /// Clones `value` to all four internal parallel ChaCha rows.
+    fn broadcast_row(value: Row) -> Self;
 
     /// Not to be used directly.
     ///

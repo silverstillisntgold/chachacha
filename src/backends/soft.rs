@@ -1,5 +1,7 @@
 use super::{BUF_SIZE, Vector, VectorOps, VectorType};
+use crate::util::Row;
 use core::ops::{Add, BitOr, BitXor};
+use core::{marker::PhantomData, mem::transmute};
 
 pub struct Soft;
 impl VectorType for Soft {}
@@ -42,6 +44,13 @@ impl BitXor for Vector<Soft> {
 
 impl VectorOps for Vector<Soft> {
     #[inline(always)]
+    fn broadcast_row(value: Row) -> Self {
+        const SIZE: usize = size_of::<Vector<Soft>>() / size_of::<Row>();
+        let tmp = [value; SIZE];
+        unsafe { transmute(tmp) }
+    }
+
+    #[inline(always)]
     fn shift_left<const IMM8: i64>(mut self) -> Self {
         for i in 0..BUF_SIZE {
             self.inner[i] <<= IMM8;
@@ -59,6 +68,7 @@ impl VectorOps for Vector<Soft> {
 
     #[inline(always)]
     fn shuffle_128<const IMM8: i32>(mut self) -> Self {
+        #[inline(always)]
         const fn select<const IMM8: i32, const SHIFT: i32>() -> usize {
             ((IMM8 >> SHIFT) & 3) as usize
         }

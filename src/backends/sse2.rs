@@ -1,4 +1,5 @@
 use super::{Vector, VectorOps, VectorType};
+use crate::util::Row;
 use core::arch::x86_64::*;
 use core::mem::transmute;
 use core::ops::{Add, BitOr, BitXor};
@@ -74,6 +75,14 @@ impl BitXor for Vector<SSE2> {
 }
 
 impl VectorOps for Vector<SSE2> {
+    #[inline(always)]
+    fn broadcast_row(value: Row) -> Self {
+        unsafe {
+            let tmp = transmute(value);
+            Internal([tmp; LOCAL_SIZE]).into()
+        }
+    }
+
     #[inline(always)]
     fn shift_left<const IMM8: i64>(self) -> Self {
         unsafe {
