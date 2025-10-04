@@ -8,7 +8,6 @@ mod soft;
 mod sse2;
 
 use crate::{
-    rounds::*,
     util::{ChaChaNaked, ROW_A, Row},
     variations::*,
 };
@@ -22,6 +21,7 @@ const AVX512_REG_SIZE: usize = 512;
 const BUF_SIZE: usize = AVX512_REG_SIZE / i32::BITS as usize;
 const BUF_SIZE_HALF: usize = BUF_SIZE / 2;
 
+#[derive(Clone, Copy)]
 #[repr(C, align(64))]
 union Internal {
     i32x16: [i32; BUF_SIZE],
@@ -44,9 +44,10 @@ impl DerefMut for Internal {
     }
 }
 
-pub trait VectorType {}
+pub trait VectorType: Copy {}
 
 /// Represents a single row of four side-by-side ChaCha instances.
+#[derive(Clone, Copy)]
 #[repr(C, align(64))]
 pub struct Vector<T> {
     inner: Internal,
@@ -83,16 +84,16 @@ pub trait VectorOps:
 
     /// Not to be used directly.
     ///
-    /// Shifts each internal `i32` by `IMM8` places to the left.
-    fn shift_left<const IMM8: i64>(self) -> Self;
+    /// Shifts each internal `i32` by `K` places to the left.
+    fn shift_left<const K: i64>(self) -> Self;
 
     /// Not to be used directly.
     ///
-    /// Shifts each internal `i32` by `IMM8` places to the right.
-    fn shift_right<const IMM8: i64>(self) -> Self;
+    /// Shifts each internal `i32` by `K` places to the right.
+    fn shift_right<const K: i64>(self) -> Self;
 
-    /// Shuffles the four internal 128-bit lanes using `IMM8` as a destination mask.
-    fn shuffle_128<const IMM8: i32>(self) -> Self;
+    /// Shuffles the four internal 128-bit lanes using `MASK` as a destination mask.
+    fn shuffle_128<const MASK: i32>(self) -> Self;
 }
 
 #[repr(C)]
@@ -155,12 +156,59 @@ where
 
     #[inline(always)]
     pub fn increment<V: Variant>(&mut self) {
-        todo!()
+        match V::VAR {
+            Variants::Djb => unsafe {
+                self.row_d.inner.i64x8[7] = self.row_d.inner.i64x8[7].wrapping_add(1);
+                self.row_d.inner.i64x8[5] = self.row_d.inner.i64x8[5].wrapping_add(1);
+                self.row_d.inner.i64x8[3] = self.row_d.inner.i64x8[3].wrapping_add(1);
+                self.row_d.inner.i64x8[1] = self.row_d.inner.i64x8[1].wrapping_add(1);
+            },
+            Variants::Ietf => unsafe {
+                self.row_d.inner.i32x16[15] = self.row_d.inner.i32x16[15].wrapping_add(1);
+                self.row_d.inner.i32x16[11] = self.row_d.inner.i32x16[11].wrapping_add(1);
+                self.row_d.inner.i32x16[7] = self.row_d.inner.i32x16[7].wrapping_add(1);
+                self.row_d.inner.i32x16[3] = self.row_d.inner.i32x16[3].wrapping_add(1);
+            },
+        }
     }
+
+    // for [a, b, c, d] in self.state.iter_mut() {
+    //     *a = _mm256_add_epi32(*a, *b);
+    //     *d = _mm256_xor_si256(*d, *a);
+    //     *d = rotate_left_epi32!(*d, 16);
+
+    //     *c = _mm256_add_epi32(*c, *d);
+    //     *b = _mm256_xor_si256(*b, *c);
+    //     *b = rotate_left_epi32!(*b, 12);
+
+    //     *a = _mm256_add_epi32(*a, *b);
+    //     *d = _mm256_xor_si256(*d, *a);
+    //     *d = rotate_left_epi32!(*d, 8);
+
+    //     *c = _mm256_add_epi32(*c, *d);
+    //     *b = _mm256_xor_si256(*b, *c);
+    //     *b = rotate_left_epi32!(*b, 7);
+    // }
 
     #[inline(always)]
     pub fn double_round(&mut self) {
-        todo!()
+        // First round
+        self.row_a = self.row_a + self.row_b;
+        self.row_d = self.row_d ^ self.row_a;
+        self.row_d = rotate_left_epi32!(self.row_d, 16);
+
+        // Diagonolize lanes
+        self.row_a = self.row_a.shuffle_128::<0b_10_01_00_11>();
+        self.row_c = self.row_c.shuffle_128::<0b_00_11_10_01>();
+        self.row_d = self.row_d.shuffle_128::<0b_01_00_11_10>();
+
+        // Second round
+        // TODO
+
+        // Undiagonolize lanes
+        self.row_a = self.row_a.shuffle_128::<0b_10_01_00_11>();
+        self.row_c = self.row_c.shuffle_128::<0b_01_00_11_10>();
+        self.row_d = self.row_d.shuffle_128::<0b_00_11_10_01>();
     }
 
     #[inline(always)]

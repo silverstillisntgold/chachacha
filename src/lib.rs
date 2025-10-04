@@ -24,7 +24,7 @@ assert!(!all_zeros);
 [`ya-rand`]: https://crates.io/crates/ya-rand
 */
 
-#![allow(clippy::missing_transmute_annotations, unused)]
+#![allow(clippy::missing_transmute_annotations)]
 #![deny(missing_docs)]
 #![no_std]
 

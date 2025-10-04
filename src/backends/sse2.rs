@@ -9,6 +9,7 @@ const LOCAL_SIZE: usize = 4;
 #[repr(C, align(64))]
 struct Internal([__m128i; LOCAL_SIZE]);
 
+#[derive(Clone, Copy)]
 pub struct SSE2;
 impl VectorType for SSE2 {}
 
@@ -84,9 +85,9 @@ impl VectorOps for Vector<SSE2> {
     }
 
     #[inline(always)]
-    fn shift_left<const IMM8: i64>(self) -> Self {
+    fn shift_left<const K: i64>(self) -> Self {
         unsafe {
-            let count = _mm_set1_epi64x(IMM8);
+            let count = _mm_set1_epi64x(K);
             let mut lhs = Internal::from(self);
             for i in 0..LOCAL_SIZE {
                 lhs.0[i] = _mm_sll_epi32(lhs.0[i], count);
@@ -96,9 +97,9 @@ impl VectorOps for Vector<SSE2> {
     }
 
     #[inline(always)]
-    fn shift_right<const IMM8: i64>(self) -> Self {
+    fn shift_right<const K: i64>(self) -> Self {
         unsafe {
-            let count = _mm_set1_epi64x(IMM8);
+            let count = _mm_set1_epi64x(K);
             let mut lhs = Internal::from(self);
             for i in 0..LOCAL_SIZE {
                 lhs.0[i] = _mm_srl_epi32(lhs.0[i], count);
@@ -108,11 +109,11 @@ impl VectorOps for Vector<SSE2> {
     }
 
     #[inline(always)]
-    fn shuffle_128<const IMM8: i32>(self) -> Self {
+    fn shuffle_128<const MASK: i32>(self) -> Self {
         unsafe {
             let mut lhs = Internal::from(self);
             for i in 0..LOCAL_SIZE {
-                lhs.0[i] = _mm_shuffle_epi32(lhs.0[i], IMM8);
+                lhs.0[i] = _mm_shuffle_epi32::<MASK>(lhs.0[i]);
             }
             lhs.into()
         }

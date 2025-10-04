@@ -4,6 +4,7 @@ use core::arch::x86_64::*;
 use core::mem::transmute;
 use core::ops::{Add, BitOr, BitXor};
 
+#[derive(Clone, Copy)]
 pub struct AVX512;
 impl VectorType for AVX512 {}
 
@@ -52,29 +53,29 @@ impl VectorOps for Vector<AVX512> {
     #[inline(always)]
     fn broadcast_row(value: Row) -> Self {
         unsafe {
-            let tmp = transmute(value.u32x4);
+            let tmp = transmute(value);
             _mm512_broadcastd_epi32(tmp).into()
         }
     }
 
     #[inline(always)]
-    fn shift_left<const IMM8: i64>(self) -> Self {
+    fn shift_left<const K: i64>(self) -> Self {
         unsafe {
-            let count = _mm_set1_epi64x(IMM8);
+            let count = _mm_set1_epi64x(K);
             _mm512_sll_epi32(self.into(), count).into()
         }
     }
 
     #[inline(always)]
-    fn shift_right<const IMM8: i64>(self) -> Self {
+    fn shift_right<const K: i64>(self) -> Self {
         unsafe {
-            let count = _mm_set1_epi64x(IMM8);
+            let count = _mm_set1_epi64x(K);
             _mm512_srl_epi32(self.into(), count).into()
         }
     }
 
     #[inline(always)]
-    fn shuffle_128<const IMM8: i32>(self) -> Self {
-        unsafe { _mm512_shuffle_epi32(self.into(), IMM8).into() }
+    fn shuffle_128<const MASK: i32>(self) -> Self {
+        unsafe { _mm512_shuffle_epi32::<MASK>(self.into()).into() }
     }
 }

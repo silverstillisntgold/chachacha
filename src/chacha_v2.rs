@@ -135,23 +135,23 @@ where
     //     }
     // }
 
-    #[inline]
-    pub fn get_counter(&self) -> u64 {
-        unsafe {
-            match V::VAR {
-                Variants::Djb => self.row_d.u64x2[0],
-                Variants::Ietf => self.row_d.u32x4[0] as u64,
-            }
-        }
-    }
+    // #[inline]
+    // pub fn get_counter(&self) -> u64 {
+    //     unsafe {
+    //         match V::VAR {
+    //             Variants::Djb => self.row_d.u64x2[0],
+    //             Variants::Ietf => self.row_d.u32x4[0] as u64,
+    //         }
+    //     }
+    // }
 
-    #[inline]
-    pub fn set_counter(&mut self, new_counter: u64) {
-        unsafe {
-            match V::VAR {
-                Variants::Djb => self.row_d.u64x2[0] = new_counter,
-                Variants::Ietf => self.row_d.u32x4[0] = new_counter as u32,
-            }
-        }
-    }
+    // #[inline]
+    // pub fn set_counter(&mut self, new_counter: u64) {
+    //     unsafe {
+    //         match V::VAR {
+    //             Variants::Djb => self.row_d.u64x2[0] = new_counter,
+    //             Variants::Ietf => self.row_d.u32x4[0] = new_counter as u32,
+    //         }
+    //     }
+    // }
 }

@@ -9,6 +9,7 @@ const LOCAL_SIZE: usize = 2;
 #[repr(C, align(64))]
 struct Internal([__m256i; LOCAL_SIZE]);
 
+#[derive(Clone, Copy)]
 pub struct AVX2;
 impl VectorType for AVX2 {}
 
@@ -78,15 +79,15 @@ impl VectorOps for Vector<AVX2> {
     #[inline(always)]
     fn broadcast_row(value: Row) -> Self {
         unsafe {
-            let tmp = transmute(value.u32x4);
+            let tmp = transmute(value);
             Internal([_mm256_broadcastd_epi32(tmp); LOCAL_SIZE]).into()
         }
     }
 
     #[inline(always)]
-    fn shift_left<const IMM8: i64>(self) -> Self {
+    fn shift_left<const K: i64>(self) -> Self {
         unsafe {
-            let count = _mm_set1_epi64x(IMM8);
+            let count = _mm_set1_epi64x(K);
             let mut lhs = Internal::from(self);
             for i in 0..LOCAL_SIZE {
                 lhs.0[i] = _mm256_sll_epi32(lhs.0[i], count);
@@ -96,9 +97,9 @@ impl VectorOps for Vector<AVX2> {
     }
 
     #[inline(always)]
-    fn shift_right<const IMM8: i64>(self) -> Self {
+    fn shift_right<const K: i64>(self) -> Self {
         unsafe {
-            let count = _mm_set1_epi64x(IMM8);
+            let count = _mm_set1_epi64x(K);
             let mut lhs = Internal::from(self);
             for i in 0..LOCAL_SIZE {
                 lhs.0[i] = _mm256_srl_epi32(lhs.0[i], count);
@@ -108,11 +109,11 @@ impl VectorOps for Vector<AVX2> {
     }
 
     #[inline(always)]
-    fn shuffle_128<const IMM8: i32>(self) -> Self {
+    fn shuffle_128<const MASK: i32>(self) -> Self {
         unsafe {
             let mut lhs = Internal::from(self);
             for i in 0..LOCAL_SIZE {
-                lhs.0[i] = _mm256_shuffle_epi32(lhs.0[i], IMM8);
+                lhs.0[i] = _mm256_shuffle_epi32::<MASK>(lhs.0[i]);
             }
             lhs.into()
         }
