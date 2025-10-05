@@ -236,6 +236,13 @@ impl<R, T, V> From<u8> for ChaChaCore<R, T, V> {
     }
 }
 
+impl<R, T, V> From<u16> for ChaChaCore<R, T, V> {
+    #[inline]
+    fn from(value: u16) -> Self {
+        [value; SEED_LEN_U16].into()
+    }
+}
+
 impl<R, T, V> From<u32> for ChaChaCore<R, T, V> {
     #[inline]
     fn from(value: u32) -> Self {
@@ -253,6 +260,13 @@ impl<R, T, V> From<u64> for ChaChaCore<R, T, V> {
 impl<R, T, V> From<[u8; SEED_LEN_U8]> for ChaChaCore<R, T, V> {
     #[inline]
     fn from(value: [u8; SEED_LEN_U8]) -> Self {
+        unsafe { transmute(value) }
+    }
+}
+
+impl<R, T, V> From<[u16; SEED_LEN_U16]> for ChaChaCore<R, T, V> {
+    #[inline]
+    fn from(value: [u16; SEED_LEN_U16]) -> Self {
         unsafe { transmute(value) }
     }
 }

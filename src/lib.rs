@@ -43,25 +43,25 @@ use chacha::ChaChaCore;
 use rounds::*;
 use variations::*;
 
-pub use util::{BUF_LEN_U8, BUF_LEN_U64, SEED_LEN_U8, SEED_LEN_U32, SEED_LEN_U64};
+pub use util::{BUF_LEN_U8, BUF_LEN_U64, SEED_LEN_U8, SEED_LEN_U16, SEED_LEN_U32, SEED_LEN_U64};
 
-// type ChaCha<R, V> = ChaChaCore<Matrix, R, V>;
+type ChaCha<R, V> = ChaChaCore<R, backends::VecType, V>;
 
-// /// ChaCha with 8 rounds, a 64-bit counter, and a 64-bit nonce.
-// pub type ChaCha8Djb = ChaCha<R8, Djb>;
-// /// ChaCha with 12 rounds, a 64-bit counter, and a 64-bit nonce.
-// pub type ChaCha12Djb = ChaCha<R12, Djb>;
-// /// ChaCha with 20 rounds, a 64-bit counter, and a 64-bit nonce.
-// pub type ChaCha20Djb = ChaCha<R20, Djb>;
+/// ChaCha with 8 rounds, a 64-bit counter, and a 64-bit nonce.
+pub type ChaCha8Djb = ChaCha<R8, Djb>;
+/// ChaCha with 12 rounds, a 64-bit counter, and a 64-bit nonce.
+pub type ChaCha12Djb = ChaCha<R12, Djb>;
+/// ChaCha with 20 rounds, a 64-bit counter, and a 64-bit nonce.
+pub type ChaCha20Djb = ChaCha<R20, Djb>;
 
-// /// ChaCha with 8 rounds, a 32-bit counter, and a 96-bit nonce.
-// pub type ChaCha8Ietf = ChaCha<R8, Ietf>;
-// /// ChaCha with 12 rounds, a 32-bit counter, and a 96-bit nonce.
-// pub type ChaCha12Ietf = ChaCha<R12, Ietf>;
-// /// ChaCha with 20 rounds, a 32-bit counter, and a 96-bit nonce.
-// pub type ChaCha20Ietf = ChaCha<R20, Ietf>;
+/// ChaCha with 8 rounds, a 32-bit counter, and a 96-bit nonce.
+pub type ChaCha8Ietf = ChaCha<R8, Ietf>;
+/// ChaCha with 12 rounds, a 32-bit counter, and a 96-bit nonce.
+pub type ChaCha12Ietf = ChaCha<R12, Ietf>;
+/// ChaCha with 20 rounds, a 32-bit counter, and a 96-bit nonce.
+pub type ChaCha20Ietf = ChaCha<R20, Ietf>;
 
-/*#[cfg(test)]
+#[cfg(test)]
 mod tests {
     use super::backends::*;
     use super::chacha::ChaChaCore;
@@ -82,37 +82,37 @@ mod tests {
     #[cfg(target_feature = "neon")]
     #[test]
     fn chacha_8_djb_neon() {
-        test_chacha::<neon::Matrix, R8, Djb>();
+        test_chacha::<neon::NEON, R8, Djb>();
     }
 
     #[cfg(target_feature = "neon")]
     #[test]
     fn chacha_8_ietf_neon() {
-        test_chacha::<neon::Matrix, R8, Ietf>();
+        test_chacha::<neon::NEON, R8, Ietf>();
     }
 
     #[cfg(target_feature = "neon")]
     #[test]
     fn chacha_12_djb_neon() {
-        test_chacha::<neon::Matrix, R12, Djb>();
+        test_chacha::<neon::NEON, R12, Djb>();
     }
 
     #[cfg(target_feature = "neon")]
     #[test]
     fn chacha_12_ietf_neon() {
-        test_chacha::<neon::Matrix, R12, Ietf>();
+        test_chacha::<neon::NEON, R12, Ietf>();
     }
 
     #[cfg(target_feature = "neon")]
     #[test]
     fn chacha_20_djb_neon() {
-        test_chacha::<neon::Matrix, R20, Djb>();
+        test_chacha::<neon::NEON, R20, Djb>();
     }
 
     #[cfg(target_feature = "neon")]
     #[test]
     fn chacha_20_ietf_neon() {
-        test_chacha::<neon::Matrix, R20, Ietf>();
+        test_chacha::<neon::NEON, R20, Ietf>();
     }
 
     #[cfg(target_feature = "avx512f")]
@@ -154,106 +154,110 @@ mod tests {
     #[cfg(target_feature = "avx2")]
     #[test]
     fn chacha_8_djb_avx2() {
-        test_chacha::<avx2::Matrix, R8, Djb>();
+        test_chacha::<avx2::AVX2, R8, Djb>();
     }
 
     #[cfg(target_feature = "avx2")]
     #[test]
     fn chacha_8_ietf_avx2() {
-        test_chacha::<avx2::Matrix, R8, Ietf>();
+        test_chacha::<avx2::AVX2, R8, Ietf>();
     }
 
     #[cfg(target_feature = "avx2")]
     #[test]
     fn chacha_12_djb_avx2() {
-        test_chacha::<avx2::Matrix, R12, Djb>();
+        test_chacha::<avx2::AVX2, R12, Djb>();
     }
 
     #[cfg(target_feature = "avx2")]
     #[test]
     fn chacha_12_ietf_avx2() {
-        test_chacha::<avx2::Matrix, R12, Ietf>();
+        test_chacha::<avx2::AVX2, R12, Ietf>();
     }
 
     #[cfg(target_feature = "avx2")]
     #[test]
     fn chacha_20_djb_avx2() {
-        test_chacha::<avx2::Matrix, R20, Djb>();
+        test_chacha::<avx2::AVX2, R20, Djb>();
     }
 
     #[cfg(target_feature = "avx2")]
     #[test]
     fn chacha_20_ietf_avx2() {
-        test_chacha::<avx2::Matrix, R20, Ietf>();
+        test_chacha::<avx2::AVX2, R20, Ietf>();
     }
 
     #[cfg(target_feature = "sse2")]
     #[test]
     fn chacha_8_djb_sse2() {
-        test_chacha::<sse2::Matrix, R8, Djb>();
+        test_chacha::<sse2::SSE2, R8, Djb>();
     }
 
     #[cfg(target_feature = "sse2")]
     #[test]
     fn chacha_8_ietf_sse2() {
-        test_chacha::<sse2::Matrix, R8, Ietf>();
+        test_chacha::<sse2::SSE2, R8, Ietf>();
     }
 
     #[cfg(target_feature = "sse2")]
     #[test]
     fn chacha_12_djb_sse2() {
-        test_chacha::<sse2::Matrix, R12, Djb>();
+        test_chacha::<sse2::SSE2, R12, Djb>();
     }
 
     #[cfg(target_feature = "sse2")]
     #[test]
     fn chacha_12_ietf_sse2() {
-        test_chacha::<sse2::Matrix, R12, Ietf>();
+        test_chacha::<sse2::SSE2, R12, Ietf>();
     }
 
     #[cfg(target_feature = "sse2")]
     #[test]
     fn chacha_20_djb_sse2() {
-        test_chacha::<sse2::Matrix, R20, Djb>();
+        test_chacha::<sse2::SSE2, R20, Djb>();
     }
 
     #[cfg(target_feature = "sse2")]
     #[test]
     fn chacha_20_ietf_sse2() {
-        test_chacha::<sse2::Matrix, R20, Ietf>();
+        test_chacha::<sse2::SSE2, R20, Ietf>();
     }
 
     #[test]
     fn chacha_8_djb_soft() {
-        test_chacha::<soft::Matrix, R8, Djb>();
+        test_chacha::<soft::Soft, R8, Djb>();
     }
 
     #[test]
     fn chacha_8_ietf_soft() {
-        test_chacha::<soft::Matrix, R8, Ietf>();
+        test_chacha::<soft::Soft, R8, Ietf>();
     }
 
     #[test]
     fn chacha_12_djb_soft() {
-        test_chacha::<soft::Matrix, R12, Djb>();
+        test_chacha::<soft::Soft, R12, Djb>();
     }
 
     #[test]
     fn chacha_12_ietf_soft() {
-        test_chacha::<soft::Matrix, R12, Ietf>();
+        test_chacha::<soft::Soft, R12, Ietf>();
     }
 
     #[test]
     fn chacha_20_djb_soft() {
-        test_chacha::<soft::Matrix, R20, Djb>();
+        test_chacha::<soft::Soft, R20, Djb>();
     }
 
     #[test]
     fn chacha_20_ietf_soft() {
-        test_chacha::<soft::Matrix, R20, Ietf>();
+        test_chacha::<soft::Soft, R20, Ietf>();
     }
 
-    fn test_chacha<M: Machine, R: DoubleRounds, V: Variant>() {
+    fn test_chacha<T, R: DoubleRounds, V: Variant>()
+    where
+        T: Copy,
+        Vector<T>: VectorOps,
+    {
         let mut rng = new_rng();
         for i in 0..TEST_COUNT {
             let mut seed = [0; SEED_LEN_U8];
@@ -266,7 +270,7 @@ mod tests {
                 let seed_ref: &mut [u32; SEED_LEN_U32] = unsafe { transmute(&mut seed) };
                 seed_ref[8] = u32::MAX - 7;
             }
-            let mut chacha = ChaChaCore::<M, R, V>::from(seed);
+            let mut chacha = ChaChaCore::<R, T, V>::from(seed);
             let mut chacha_ref = ChaChaRef::<R, V>::from(seed);
 
             let chacha_iter = repeat_with(|| chacha.get_block()).take(TEST_LEN).flatten();
@@ -289,4 +293,3 @@ mod tests {
         }
     }
 }
-*/

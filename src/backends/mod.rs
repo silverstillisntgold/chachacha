@@ -3,14 +3,28 @@ TODO: Module docs.
 */
 
 #[cfg(target_feature = "avx2")]
-mod avx2;
+pub mod avx2;
 #[cfg(target_feature = "avx512f")]
-mod avx512;
+pub mod avx512;
 #[cfg(target_feature = "neon")]
-mod neon;
-mod soft;
+pub mod neon;
+pub mod soft;
 #[cfg(target_feature = "sse2")]
-mod sse2;
+pub mod sse2;
+
+cfg_if::cfg_if! {
+    if #[cfg(target_feature = "avx512f")] {
+        pub use avx512::AVX512 as VecType;
+    } else if #[cfg(target_feature = "avx2")] {
+        pub use avx2::AVX2 as VecType;
+    } else if #[cfg(target_feature = "sse2")] {
+        pub use sse2::SSE2 as VecType;
+    } else if #[cfg(target_feature = "neon")] {
+        pub use neon::NEON as VecType;
+    } else {
+        pub use soft::Soft as VecType;
+    }
+}
 
 use crate::{util::*, variations::*};
 use core::{
@@ -262,7 +276,7 @@ where
     }
 
     #[inline(always)]
-    pub fn get_inner(self, buf: &mut [u8; BUF_LEN_U8]) {
+    pub fn get_inner(mut self, buf: &mut [u8; BUF_LEN_U8]) {
         // TODO: Data probably needs to be rearranged before being returned.
         *buf = self.into();
     }

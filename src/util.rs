@@ -6,16 +6,21 @@ Module containing useful constants/structs and the core [`Machine`] trait.
 pub const BUF_LEN_U8: usize = MATRIX_SIZE_U8 * DEPTH;
 /// Size (in 64-bit integers) of a single ChaCha computation.
 pub const BUF_LEN_U64: usize = BUF_LEN_U8 / size_of::<u64>();
+
 /// Columns present in a standard ChaCha matrix.
 pub const COLUMNS: usize = 4;
 /// Rows present in a standard ChaCha matrix.
 pub const ROWS: usize = 4;
+
 /// Size (in 8-bit integers) of the raw seed for a ChaCha instance.
 pub const SEED_LEN_U8: usize = (ROWS - 1) * size_of::<Row>();
+/// Size (in 16-bit integers) of the raw seed for a ChaCha instance.
+pub const SEED_LEN_U16: usize = SEED_LEN_U8 / size_of::<u16>();
 /// Size (in 32-bit integers) of the raw seed for a ChaCha instance.
 pub const SEED_LEN_U32: usize = SEED_LEN_U8 / size_of::<u32>();
 /// Size (in 64-bit integers) of the raw seed for a ChaCha instance.
 pub const SEED_LEN_U64: usize = SEED_LEN_U8 / size_of::<u64>();
+
 /// Size (in 8-bit integers) of a reference ChaCha matrix.
 pub const MATRIX_SIZE_U8: usize = MATRIX_SIZE_U32 * size_of::<u32>();
 /// Size (in 32-bit integers) of a reference ChaCha matrix.
