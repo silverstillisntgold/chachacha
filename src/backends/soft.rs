@@ -1,11 +1,10 @@
-use super::{BUF_SIZE, Vector, VectorOps, VectorType};
+use super::{BUF_SIZE, Vector, VectorOps};
 use crate::util::Row;
 use core::mem::transmute;
 use core::ops::{Add, BitOr, BitXor};
 
 #[derive(Clone, Copy)]
 pub struct Soft;
-impl VectorType for Soft {}
 
 impl Add for Vector<Soft> {
     type Output = Self;

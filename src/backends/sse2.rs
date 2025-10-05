@@ -1,4 +1,4 @@
-use super::{Vector, VectorOps, VectorType};
+use super::{Vector, VectorOps};
 use crate::util::Row;
 use core::arch::x86_64::*;
 use core::mem::transmute;
@@ -11,7 +11,6 @@ struct Internal([__m128i; LOCAL_SIZE]);
 
 #[derive(Clone, Copy)]
 pub struct SSE2;
-impl VectorType for SSE2 {}
 
 impl From<Internal> for Vector<SSE2> {
     #[inline(always)]

@@ -1,5 +1,4 @@
-use super::soft::Soft;
-use super::{Vector, VectorOps, VectorType};
+use super::{Vector, VectorOps};
 use crate::util::Row;
 use core::arch::aarch64::*;
 use core::mem::transmute;
@@ -11,24 +10,23 @@ const LOCAL_SIZE: usize = 4;
 struct Internal([int32x4_t; LOCAL_SIZE]);
 
 #[derive(Clone, Copy)]
-pub struct Neon;
-impl VectorType for Neon {}
+pub struct NEON;
 
-impl From<Internal> for Vector<Neon> {
+impl From<Internal> for Vector<NEON> {
     #[inline(always)]
     fn from(value: Internal) -> Self {
         unsafe { transmute(value) }
     }
 }
 
-impl From<Vector<Neon>> for Internal {
+impl From<Vector<NEON>> for Internal {
     #[inline(always)]
-    fn from(value: Vector<Neon>) -> Self {
+    fn from(value: Vector<NEON>) -> Self {
         unsafe { transmute(value) }
     }
 }
 
-impl Add for Vector<Neon> {
+impl Add for Vector<NEON> {
     type Output = Self;
 
     #[inline(always)]
@@ -44,7 +42,7 @@ impl Add for Vector<Neon> {
     }
 }
 
-impl BitOr for Vector<Neon> {
+impl BitOr for Vector<NEON> {
     type Output = Self;
 
     #[inline(always)]
@@ -60,7 +58,7 @@ impl BitOr for Vector<Neon> {
     }
 }
 
-impl BitXor for Vector<Neon> {
+impl BitXor for Vector<NEON> {
     type Output = Self;
 
     #[inline(always)]
@@ -76,7 +74,7 @@ impl BitXor for Vector<Neon> {
     }
 }
 
-impl VectorOps for Vector<Neon> {
+impl VectorOps for Vector<NEON> {
     #[inline(always)]
     fn broadcast_row(value: Row) -> Self {
         unsafe {
@@ -114,6 +112,8 @@ impl VectorOps for Vector<Neon> {
         // of aids.
         // The soft implementation is written in such a way that the compiler still
         // emits optimal assembly in release mode.
-        self.cast::<Soft>().shuffle_internal::<MASK>().cast()
+        self.cast::<super::soft::Soft>()
+            .shuffle_internal::<MASK>()
+            .cast()
     }
 }

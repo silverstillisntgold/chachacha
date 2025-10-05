@@ -4,9 +4,7 @@ TODO: Module docs.
 
 #[cfg(target_feature = "avx2")]
 mod avx2;
-// Enabled as avx2 for now since I don't have avx512 machine but
-// still may need to make changes.
-#[cfg(target_feature = "avx2")]
+#[cfg(target_feature = "avx512f")]
 mod avx512;
 #[cfg(target_feature = "neon")]
 mod neon;
@@ -14,10 +12,7 @@ mod soft;
 #[cfg(target_feature = "sse2")]
 mod sse2;
 
-use crate::{
-    util::{ChaChaNaked, ROW_A, Row},
-    variations::*,
-};
+use crate::{util::*, variations::*};
 use core::{
     marker::PhantomData,
     mem::transmute,
@@ -51,8 +46,6 @@ impl DerefMut for Internal {
     }
 }
 
-pub trait VectorType: Copy {}
-
 /// Represents a single row of four side-by-side ChaCha instances.
 #[derive(Clone, Copy)]
 #[repr(C, align(64))]
@@ -72,15 +65,13 @@ impl<T> Vector<T> {
 
     #[inline(always)]
     pub fn reverse(&mut self) {
-        self.inner.reverse();
-    }
-
-    #[inline(always)]
-    pub fn increment_idx<const IDX: usize>(&mut self) {
-        self.inner[IDX] = self.inner[IDX].wrapping_add(1);
+        unsafe {
+            self.inner.i32x16.reverse();
+        }
     }
 }
 
+/// Emulates _mm512_rol_epi32 on the passed [`Vector`].
 macro_rules! rotate_left_epi32 {
     ($vector: expr, $LEFT_SHIFT: expr) => {{
         const LEFT_SHIFT: i32 = $LEFT_SHIFT;
@@ -116,37 +107,72 @@ pub trait VectorOps:
         self.shuffle_internal::<MASK>()
     }
 
-    /// Shuffles the four internal 128-bit lanes using `MASK` as a destination mask.
+    /// Shuffles the four internal 128-bit lanes using `MASK` as the destination mask.
     ///
     /// Emulates the _mm512_shuffle_epi32 instruction.
     fn shuffle_internal<const MASK: i32>(self) -> Self;
 }
 
+#[derive(Clone)]
 #[repr(C)]
-pub struct Machine<T> {
+pub struct MachineV2<T> {
     row_a: Vector<T>,
     row_b: Vector<T>,
     row_c: Vector<T>,
     row_d: Vector<T>,
 }
 
-impl<T> From<[u8; 256]> for Machine<T> {
+impl<T> From<[u8; BUF_LEN_U8]> for MachineV2<T> {
     #[inline(always)]
-    fn from(value: [u8; 256]) -> Self {
+    fn from(value: [u8; BUF_LEN_U8]) -> Self {
         unsafe { transmute(value) }
     }
 }
 
-impl<T> From<Machine<T>> for [u8; 256] {
+impl<T> From<MachineV2<T>> for [u8; BUF_LEN_U8] {
     #[inline(always)]
-    fn from(value: Machine<T>) -> Self {
+    fn from(value: MachineV2<T>) -> Self {
         unsafe { transmute(value) }
     }
 }
 
-impl<T> Machine<T>
+impl<T> Add for MachineV2<T>
 where
-    T: VectorType,
+    Vector<T>: VectorOps,
+{
+    type Output = Self;
+
+    #[inline(always)]
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            row_a: self.row_a + rhs.row_a,
+            row_b: self.row_b + rhs.row_b,
+            row_c: self.row_c + rhs.row_c,
+            row_d: self.row_d + rhs.row_d,
+        }
+    }
+}
+
+impl<T> BitXor for MachineV2<T>
+where
+    Vector<T>: VectorOps,
+{
+    type Output = Self;
+
+    #[inline(always)]
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        Self {
+            row_a: self.row_a ^ rhs.row_a,
+            row_b: self.row_b ^ rhs.row_b,
+            row_c: self.row_c ^ rhs.row_c,
+            row_d: self.row_d ^ rhs.row_d,
+        }
+    }
+}
+
+impl<T> MachineV2<T>
+where
+    T: Copy,
     Vector<T>: VectorOps,
 {
     #[inline(always)]
@@ -155,7 +181,6 @@ where
         let row_b = Vector::broadcast_row(state.row_b);
         let row_c = Vector::broadcast_row(state.row_c);
         let mut row_d = Vector::broadcast_row(state.row_d);
-
         // TODO: Potentially use explicit intrinsics for this.
         match V::VAR {
             Variants::Djb => unsafe {
@@ -171,7 +196,6 @@ where
                 row_d.inner.i32x16[3] = row_d.inner.i32x16[3].wrapping_add(3);
             },
         }
-
         Self {
             row_a,
             row_b,
@@ -198,61 +222,58 @@ where
         }
     }
 
-    // for [a, b, c, d] in self.state.iter_mut() {
-    //     *a = _mm256_add_epi32(*a, *b);
-    //     *d = _mm256_xor_si256(*d, *a);
-    //     *d = rotate_left_epi32!(*d, 16);
-
-    //     *c = _mm256_add_epi32(*c, *d);
-    //     *b = _mm256_xor_si256(*b, *c);
-    //     *b = rotate_left_epi32!(*b, 12);
-
-    //     *a = _mm256_add_epi32(*a, *b);
-    //     *d = _mm256_xor_si256(*d, *a);
-    //     *d = rotate_left_epi32!(*d, 8);
-
-    //     *c = _mm256_add_epi32(*c, *d);
-    //     *b = _mm256_xor_si256(*b, *c);
-    //     *b = rotate_left_epi32!(*b, 7);
-    // }
-
     #[inline(always)]
-    pub fn double_round(&mut self) {
-        // First round
+    fn single_round(&mut self) {
+        // First quarter round.
         self.row_a = self.row_a + self.row_b;
         self.row_d = self.row_d ^ self.row_a;
         self.row_d = rotate_left_epi32!(self.row_d, 16);
+        // Second quarter round.
+        self.row_c = self.row_c + self.row_c;
+        self.row_b = self.row_b ^ self.row_c;
+        self.row_b = rotate_left_epi32!(self.row_b, 12);
+        // Third quarter round.
+        self.row_a = self.row_a + self.row_b;
+        self.row_d = self.row_d ^ self.row_a;
+        self.row_d = rotate_left_epi32!(self.row_d, 8);
+        // Fourth quarter round.
+        self.row_c = self.row_c + self.row_c;
+        self.row_b = self.row_b ^ self.row_c;
+        self.row_b = rotate_left_epi32!(self.row_b, 7);
+    }
 
-        // Diagonolize lanes
+    #[inline(always)]
+    pub fn double_round(&mut self) {
+        // First round.
+        self.single_round();
+
+        // Diagonolize lanes.
         self.row_a = self.row_a.shuffle::<0b_10_01_00_11>();
         self.row_c = self.row_c.shuffle::<0b_00_11_10_01>();
         self.row_d = self.row_d.shuffle::<0b_01_00_11_10>();
 
-        // Second round
-        // TODO
+        // Second round.
+        self.single_round();
 
-        // Undiagonolize lanes
+        // Undiagonolize lanes.
         self.row_a = self.row_a.shuffle::<0b_10_01_00_11>();
         self.row_c = self.row_c.shuffle::<0b_01_00_11_10>();
         self.row_d = self.row_d.shuffle::<0b_00_11_10_01>();
     }
 
     #[inline(always)]
-    pub fn get_inner(self) -> [u8; 256] {
+    pub fn get_inner(self, buf: &mut [u8; BUF_LEN_U8]) {
         // TODO: Data probably needs to be rearranged before being returned.
-        unsafe { transmute(self) }
+        *buf = self.into();
     }
 
     #[inline(always)]
-    pub fn xor_inner(self, other: [u8; 256]) -> [u8; 256] {
-        // TODO: Same issue as in `Self::get_inner`.
-        let other = Self::from(other);
-        Self {
-            row_a: self.row_a ^ other.row_a,
-            row_b: self.row_b ^ other.row_b,
-            row_c: self.row_c ^ other.row_c,
-            row_d: self.row_d ^ other.row_d,
+    pub fn xor_inner(self, buf: &mut [u8; BUF_LEN_U8]) {
+        // TODO: Same issue as in `get_inner`.
+        let as_bytes = <[u8; BUF_LEN_U8]>::from(self);
+        // Expected to autovectorize.
+        for i in 0..BUF_LEN_U8 {
+            buf[i] ^= as_bytes[i];
         }
-        .into()
     }
 }

@@ -1,4 +1,4 @@
-use super::{Vector, VectorOps, VectorType};
+use super::{Vector, VectorOps};
 use crate::util::Row;
 use core::arch::x86_64::*;
 use core::mem::transmute;
@@ -6,7 +6,6 @@ use core::ops::{Add, BitOr, BitXor};
 
 #[derive(Clone, Copy)]
 pub struct AVX512;
-impl VectorType for AVX512 {}
 
 impl From<__m512i> for Vector<AVX512> {
     #[inline(always)]

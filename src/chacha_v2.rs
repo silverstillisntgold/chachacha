@@ -109,31 +109,31 @@ impl<R, T> ChaChaCore<R, T, Ietf> {
 impl<R, T, V> ChaChaCore<R, T, V>
 where
     R: DoubleRounds,
-    T: VectorType,
+    T: Copy,
     Vector<T>: VectorOps,
     V: Variant,
 {
-    // #[inline(always)]
-    // fn chacha<const INCREMENT: bool, const XOR: bool>(
-    //     &mut self,
-    //     machine: &mut M,
-    //     buf: &mut [u8; BUF_LEN_U8],
-    // ) {
-    //     let mut cur = machine.clone();
-    //     for _ in 0..R::COUNT {
-    //         cur.double_round();
-    //     }
-    //     let result = cur + machine.clone();
-    //     if XOR {
-    //         result.xor_result(buf);
-    //     } else {
-    //         result.fetch_result(buf);
-    //     }
-    //     if INCREMENT {
-    //         machine.increment::<V>();
-    //         self.increment();
-    //     }
-    // }
+    #[inline(always)]
+    fn chacha<const INCREMENT: bool, const XOR: bool>(
+        &mut self,
+        machine: &mut MachineV2<T>,
+        buf: &mut [u8; BUF_LEN_U8],
+    ) {
+        let mut cur = machine.clone();
+        for _ in 0..R::COUNT {
+            cur.double_round();
+        }
+        let result = cur + machine.clone();
+        if XOR {
+            result.xor_inner(buf);
+        } else {
+            result.get_inner(buf);
+        }
+        if INCREMENT {
+            machine.increment::<V>();
+            //self.increment();
+        }
+    }
 
     // #[inline]
     // pub fn get_counter(&self) -> u64 {
