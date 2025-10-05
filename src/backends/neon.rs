@@ -1,3 +1,4 @@
+use super::soft::Soft;
 use super::{Vector, VectorOps, VectorType};
 use crate::util::Row;
 use core::arch::aarch64::*;
@@ -107,12 +108,12 @@ impl VectorOps for Vector<Neon> {
     }
 
     #[inline(always)]
-    fn shuffle_128<const MASK: i32>(self) -> Self {
-        // Defer shuffling to the soft method because doing this with
-        // neon intrinsics when when are taking `MASK` is aids. Maybe when const
-        // generics are more fleshed out this won't be the case.
-        // The optimizer still compiles this to `vext` neon instructions in
-        // release mode, but in debug mode it'll be slower.
-        Vector::<super::soft::Soft>::shuffle_128::<MASK>(self.cast()).cast()
+    fn shuffle_internal<const MASK: i32>(self) -> Self {
+        // Delegate lane shuffling to the implementation used for soft targets,
+        // since doing this with neon intrinsics when our input is `MASK` is kind
+        // of aids.
+        // The soft implementation is written in such a way that the compiler still
+        // emits optimal assembly in release mode.
+        self.cast::<Soft>().shuffle_internal::<MASK>().cast()
     }
 }

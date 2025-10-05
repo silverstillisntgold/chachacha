@@ -2,10 +2,16 @@
 TODO: Module docs.
 */
 
+#[cfg(target_feature = "avx2")]
 mod avx2;
+// Enabled as avx2 for now since I don't have avx512 machine but
+// still may need to make changes.
+#[cfg(target_feature = "avx2")]
 mod avx512;
+#[cfg(target_feature = "neon")]
 mod neon;
 mod soft;
+#[cfg(target_feature = "sse2")]
 mod sse2;
 
 use crate::{
@@ -71,7 +77,7 @@ impl<T> Vector<T> {
 
     #[inline(always)]
     pub fn increment_idx<const IDX: usize>(&mut self) {
-        todo!()
+        self.inner[IDX] = self.inner[IDX].wrapping_add(1);
     }
 }
 
@@ -101,8 +107,19 @@ pub trait VectorOps:
     /// Shifts each internal `i32` by `K` places to the right.
     fn shift_right<const K: i32>(self) -> Self;
 
+    /// Wrapper around `shuffle_internal`, ensuring `MASK` contains a valid value.
+    #[inline(always)]
+    fn shuffle<const MASK: i32>(self) -> Self {
+        const {
+            assert!(0 <= MASK && MASK <= u8::MAX as i32);
+        }
+        self.shuffle_internal::<MASK>()
+    }
+
     /// Shuffles the four internal 128-bit lanes using `MASK` as a destination mask.
-    fn shuffle_128<const MASK: i32>(self) -> Self;
+    ///
+    /// Emulates the _mm512_shuffle_epi32 instruction.
+    fn shuffle_internal<const MASK: i32>(self) -> Self;
 }
 
 #[repr(C)]
@@ -207,17 +224,17 @@ where
         self.row_d = rotate_left_epi32!(self.row_d, 16);
 
         // Diagonolize lanes
-        self.row_a = self.row_a.shuffle_128::<0b_10_01_00_11>();
-        self.row_c = self.row_c.shuffle_128::<0b_00_11_10_01>();
-        self.row_d = self.row_d.shuffle_128::<0b_01_00_11_10>();
+        self.row_a = self.row_a.shuffle::<0b_10_01_00_11>();
+        self.row_c = self.row_c.shuffle::<0b_00_11_10_01>();
+        self.row_d = self.row_d.shuffle::<0b_01_00_11_10>();
 
         // Second round
         // TODO
 
         // Undiagonolize lanes
-        self.row_a = self.row_a.shuffle_128::<0b_10_01_00_11>();
-        self.row_c = self.row_c.shuffle_128::<0b_01_00_11_10>();
-        self.row_d = self.row_d.shuffle_128::<0b_00_11_10_01>();
+        self.row_a = self.row_a.shuffle::<0b_10_01_00_11>();
+        self.row_c = self.row_c.shuffle::<0b_01_00_11_10>();
+        self.row_d = self.row_d.shuffle::<0b_00_11_10_01>();
     }
 
     #[inline(always)]

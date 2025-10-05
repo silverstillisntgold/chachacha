@@ -109,7 +109,7 @@ impl VectorOps for Vector<SSE2> {
     }
 
     #[inline(always)]
-    fn shuffle_128<const MASK: i32>(self) -> Self {
+    fn shuffle_internal<const MASK: i32>(self) -> Self {
         unsafe {
             let mut lhs = Internal::from(self);
             for i in 0..LOCAL_SIZE {

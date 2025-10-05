@@ -75,7 +75,7 @@ impl VectorOps for Vector<AVX512> {
     }
 
     #[inline(always)]
-    fn shuffle_128<const MASK: i32>(self) -> Self {
+    fn shuffle_internal<const MASK: i32>(self) -> Self {
         unsafe { _mm512_shuffle_epi32::<MASK>(self.into()).into() }
     }
 }
