@@ -276,15 +276,52 @@ where
     }
 
     #[inline(always)]
-    pub fn get_inner(mut self, buf: &mut [u8; BUF_LEN_U8]) {
+    fn reorder(self) -> Self {
+        /*[
+            _mm512_extracti32x4_epi32(self.state[0], 3),
+            _mm512_extracti32x4_epi32(self.state[1], 3),
+            _mm512_extracti32x4_epi32(self.state[2], 3),
+            _mm512_extracti32x4_epi32(self.state[3], 3),
+        ],
+        [
+            _mm512_extracti32x4_epi32(self.state[0], 2),
+            _mm512_extracti32x4_epi32(self.state[1], 2),
+            _mm512_extracti32x4_epi32(self.state[2], 2),
+            _mm512_extracti32x4_epi32(self.state[3], 2),
+        ],
+        [
+            _mm512_extracti32x4_epi32(self.state[0], 1),
+            _mm512_extracti32x4_epi32(self.state[1], 1),
+            _mm512_extracti32x4_epi32(self.state[2], 1),
+            _mm512_extracti32x4_epi32(self.state[3], 1),
+        ],
+        [
+            _mm512_extracti32x4_epi32(self.state[0], 0),
+            _mm512_extracti32x4_epi32(self.state[1], 0),
+            _mm512_extracti32x4_epi32(self.state[2], 0),
+            _mm512_extracti32x4_epi32(self.state[3], 0),
+        ],*/
+        let tmp: [[[i32; 4]; 4]; 4] = unsafe { transmute(self) };
+        unsafe {
+            transmute([
+                [tmp[0][3], tmp[1][3], tmp[2][3], tmp[3][3]],
+                [tmp[0][2], tmp[1][2], tmp[2][2], tmp[3][2]],
+                [tmp[0][1], tmp[1][1], tmp[2][1], tmp[3][1]],
+                [tmp[0][0], tmp[1][0], tmp[2][0], tmp[3][0]],
+            ])
+        }
+    }
+
+    #[inline(always)]
+    pub fn get_inner(self, buf: &mut [u8; BUF_LEN_U8]) {
         // TODO: Data probably needs to be rearranged before being returned.
-        *buf = self.into();
+        *buf = self.reorder().into();
     }
 
     #[inline(always)]
     pub fn xor_inner(self, buf: &mut [u8; BUF_LEN_U8]) {
         // TODO: Same issue as in `get_inner`.
-        let as_bytes = <[u8; BUF_LEN_U8]>::from(self);
+        let as_bytes = <[u8; BUF_LEN_U8]>::from(self.reorder());
         // Expected to autovectorize.
         for i in 0..BUF_LEN_U8 {
             buf[i] ^= as_bytes[i];
