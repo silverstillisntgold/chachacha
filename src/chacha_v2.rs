@@ -24,48 +24,6 @@ pub struct ChaChaCore<R, T, V> {
     _phantom: PhantomData<(R, T, V)>,
 }
 
-impl<R, T, V> From<u8> for ChaChaCore<R, T, V> {
-    #[inline]
-    fn from(value: u8) -> Self {
-        [value; SEED_LEN_U8].into()
-    }
-}
-
-impl<R, T, V> From<u32> for ChaChaCore<R, T, V> {
-    #[inline]
-    fn from(value: u32) -> Self {
-        [value; SEED_LEN_U32].into()
-    }
-}
-
-impl<R, T, V> From<u64> for ChaChaCore<R, T, V> {
-    #[inline]
-    fn from(value: u64) -> Self {
-        [value; SEED_LEN_U64].into()
-    }
-}
-
-impl<R, T, V> From<[u8; SEED_LEN_U8]> for ChaChaCore<R, T, V> {
-    #[inline]
-    fn from(value: [u8; SEED_LEN_U8]) -> Self {
-        unsafe { transmute(value) }
-    }
-}
-
-impl<R, T, V> From<[u32; SEED_LEN_U32]> for ChaChaCore<R, T, V> {
-    #[inline]
-    fn from(value: [u32; SEED_LEN_U32]) -> Self {
-        unsafe { transmute(value) }
-    }
-}
-
-impl<R, T, V> From<[u64; SEED_LEN_U64]> for ChaChaCore<R, T, V> {
-    #[inline]
-    fn from(value: [u64; SEED_LEN_U64]) -> Self {
-        unsafe { transmute(value) }
-    }
-}
-
 impl<R, T> ChaChaCore<R, T, Djb> {
     pub fn new(key: [u32; 8], counter: u64, nonce: [u32; 2]) -> Self {
         let row_b = Row {
@@ -154,4 +112,46 @@ where
     //         }
     //     }
     // }
+}
+
+impl<R, T, V> From<u8> for ChaChaCore<R, T, V> {
+    #[inline]
+    fn from(value: u8) -> Self {
+        [value; SEED_LEN_U8].into()
+    }
+}
+
+impl<R, T, V> From<u32> for ChaChaCore<R, T, V> {
+    #[inline]
+    fn from(value: u32) -> Self {
+        [value; SEED_LEN_U32].into()
+    }
+}
+
+impl<R, T, V> From<u64> for ChaChaCore<R, T, V> {
+    #[inline]
+    fn from(value: u64) -> Self {
+        [value; SEED_LEN_U64].into()
+    }
+}
+
+impl<R, T, V> From<[u8; SEED_LEN_U8]> for ChaChaCore<R, T, V> {
+    #[inline]
+    fn from(value: [u8; SEED_LEN_U8]) -> Self {
+        unsafe { transmute(value) }
+    }
+}
+
+impl<R, T, V> From<[u32; SEED_LEN_U32]> for ChaChaCore<R, T, V> {
+    #[inline]
+    fn from(value: [u32; SEED_LEN_U32]) -> Self {
+        unsafe { transmute(value) }
+    }
+}
+
+impl<R, T, V> From<[u64; SEED_LEN_U64]> for ChaChaCore<R, T, V> {
+    #[inline]
+    fn from(value: [u64; SEED_LEN_U64]) -> Self {
+        unsafe { transmute(value) }
+    }
 }
