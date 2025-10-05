@@ -85,9 +85,9 @@ impl VectorOps for Vector<SSE2> {
     }
 
     #[inline(always)]
-    fn shift_left<const K: i64>(self) -> Self {
+    fn shift_left<const K: i32>(self) -> Self {
         unsafe {
-            let count = _mm_set1_epi64x(K);
+            let count = _mm_set1_epi64x(K as i64);
             let mut lhs = Internal::from(self);
             for i in 0..LOCAL_SIZE {
                 lhs.0[i] = _mm_sll_epi32(lhs.0[i], count);
@@ -97,9 +97,9 @@ impl VectorOps for Vector<SSE2> {
     }
 
     #[inline(always)]
-    fn shift_right<const K: i64>(self) -> Self {
+    fn shift_right<const K: i32>(self) -> Self {
         unsafe {
-            let count = _mm_set1_epi64x(K);
+            let count = _mm_set1_epi64x(K as i64);
             let mut lhs = Internal::from(self);
             for i in 0..LOCAL_SIZE {
                 lhs.0[i] = _mm_srl_epi32(lhs.0[i], count);

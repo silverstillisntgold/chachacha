@@ -59,17 +59,17 @@ impl VectorOps for Vector<AVX512> {
     }
 
     #[inline(always)]
-    fn shift_left<const K: i64>(self) -> Self {
+    fn shift_left<const K: i32>(self) -> Self {
         unsafe {
-            let count = _mm_set1_epi64x(K);
+            let count = _mm_set1_epi64x(K as i64);
             _mm512_sll_epi32(self.into(), count).into()
         }
     }
 
     #[inline(always)]
-    fn shift_right<const K: i64>(self) -> Self {
+    fn shift_right<const K: i32>(self) -> Self {
         unsafe {
-            let count = _mm_set1_epi64x(K);
+            let count = _mm_set1_epi64x(K as i64);
             _mm512_srl_epi32(self.into(), count).into()
         }
     }
