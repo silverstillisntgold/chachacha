@@ -35,7 +35,6 @@ mod chacha_reference;
 
 mod backends;
 mod chacha;
-mod chacha_v2;
 mod rounds;
 mod util;
 mod variations;

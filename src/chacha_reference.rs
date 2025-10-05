@@ -1,10 +1,10 @@
 /*!
-Module containing a reference ChaCha implementation, which is verified against the reference
+Contains a reference ChaCha implementation, which is validated against the reference
 ChaCha test vectors (available [here]).
 
 The tests are only run against the original [`Djb`] variant, but the difference in a simple
 reference implementation like this is trivial (literally a single line of code), so we assume passing
-all these tests means we would also pass the equivalent [`Ietf`] variant tests.
+all of these tests means we would also pass the equivalent [`Ietf`] variant tests.
 
 [here]: https://github.com/secworks/chacha_testvectors/blob/master/src/chacha_testvectors.txt
 */
@@ -32,7 +32,6 @@ pub struct ChaCha<R, V> {
 impl<R, V> Add for ChaCha<R, V> {
     type Output = ChaChaMatrix;
 
-    #[inline]
     fn add(self, rhs: Self) -> Self::Output {
         let mut a: ChaChaMatrix = unsafe { transmute(self) };
         let b: ChaChaMatrix = unsafe { transmute(rhs) };
@@ -44,7 +43,6 @@ impl<R, V> Add for ChaCha<R, V> {
 }
 
 impl<R, V> Clone for ChaCha<R, V> {
-    #[inline]
     fn clone(&self) -> Self {
         Self {
             row_a: self.row_a,
@@ -57,7 +55,6 @@ impl<R, V> Clone for ChaCha<R, V> {
 }
 
 impl<R, V> From<u8> for ChaCha<R, V> {
-    #[inline]
     fn from(value: u8) -> Self {
         let mut result = ChaCha::from([value; SEED_LEN_U8]);
         unsafe {
@@ -69,7 +66,6 @@ impl<R, V> From<u8> for ChaCha<R, V> {
 }
 
 impl<R, V> From<[u8; SEED_LEN_U8]> for ChaCha<R, V> {
-    #[inline]
     fn from(value: [u8; SEED_LEN_U8]) -> Self {
         const SEED_LEN_ROW: usize = SEED_LEN_U8 / size_of::<Row>();
         let rows: [Row; SEED_LEN_ROW] = unsafe { transmute(value) };
@@ -84,7 +80,6 @@ impl<R, V> From<[u8; SEED_LEN_U8]> for ChaCha<R, V> {
 }
 
 impl<R: DoubleRounds, V: Variant> ChaCha<R, V> {
-    #[inline]
     fn quarter_round(&mut self, a: usize, b: usize, c: usize, d: usize) {
         let matrix: &mut ChaChaMatrix = unsafe { transmute(self) };
 
@@ -105,7 +100,6 @@ impl<R: DoubleRounds, V: Variant> ChaCha<R, V> {
         matrix[b] = matrix[b].rotate_left(7);
     }
 
-    #[inline]
     fn increment_djb(&mut self) {
         unsafe {
             // Index 12 and 13 of the chacha matrix are treated as a
@@ -114,7 +108,6 @@ impl<R: DoubleRounds, V: Variant> ChaCha<R, V> {
         }
     }
 
-    #[inline]
     fn increment_ietf(&mut self) {
         unsafe {
             // Index 12 of the chacha matrix is incremented in isolation.
@@ -122,7 +115,6 @@ impl<R: DoubleRounds, V: Variant> ChaCha<R, V> {
         }
     }
 
-    #[inline]
     pub fn fill(&mut self, dst: &mut [u8]) {
         let src = repeat_with(|| self.get_block()).flatten();
         dst.iter_mut().zip(src).for_each(|(dst_val, src_val)| {

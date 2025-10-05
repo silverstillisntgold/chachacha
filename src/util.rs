@@ -2,9 +2,6 @@
 Module containing useful constants/structs and the core [`Machine`] trait.
 */
 
-use crate::variations::*;
-use core::ops::Add;
-
 /// Size (in 8-bit integers) of a single ChaCha computation.
 pub const BUF_LEN_U8: usize = MATRIX_SIZE_U8 * DEPTH;
 /// Size (in 64-bit integers) of a single ChaCha computation.
@@ -52,54 +49,4 @@ pub struct ChaChaNaked {
     pub row_b: Row,
     pub row_c: Row,
     pub row_d: Row,
-}
-
-/// Core trait which must be implemented for all supported architectures.
-pub trait Machine: Add<Output = Self> + Clone {
-    /// Creates a new `Machine` by broadcasting the provided `ChaChaNaked`
-    /// to `DEPTH` instances and incrementing the counters accordingly.
-    #[inline]
-    fn new<V: Variant>(state: &ChaChaNaked) -> Self {
-        match V::VAR {
-            Variants::Djb => Self::new_djb(state),
-            Variants::Ietf => Self::new_ietf(state),
-        }
-    }
-
-    /// Not to be used directly.
-    fn new_djb(state: &ChaChaNaked) -> Self;
-
-    /// Not to be used directly.
-    fn new_ietf(state: &ChaChaNaked) -> Self;
-
-    /// Increments the counter of each ChaCha instance in the current `Machine`.
-    #[inline]
-    fn increment<V: Variant>(&mut self) {
-        match V::VAR {
-            Variants::Djb => self.increment_djb(),
-            Variants::Ietf => self.increment_ietf(),
-        }
-    }
-
-    /// Not to be used directly.
-    fn increment_djb(&mut self);
-
-    /// Not to be used directly.
-    fn increment_ietf(&mut self);
-
-    /// Performs the standard ChaCha double round operation.
-    fn double_round(&mut self);
-
-    /// Converts the current `Machine` into raw bytes.
-    fn fetch_result(self, buf: &mut [u8; BUF_LEN_U8]);
-
-    /// Xors the current `Machine` raw bytes with `buf`.
-    #[inline]
-    fn xor_result(self, buf: &mut [u8; BUF_LEN_U8]) {
-        let mut tmp = [0; BUF_LEN_U8];
-        self.fetch_result(&mut tmp);
-        for i in 0..BUF_LEN_U8 {
-            buf[i] ^= tmp[i];
-        }
-    }
 }

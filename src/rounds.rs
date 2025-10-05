@@ -1,7 +1,3 @@
-/*!
-Module containing the standard ChaCha round counts.
-*/
-
 pub trait DoubleRounds {
     const COUNT: usize;
 }

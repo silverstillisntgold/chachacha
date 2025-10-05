@@ -115,28 +115,28 @@ pub trait VectorOps:
 
 #[derive(Clone)]
 #[repr(C)]
-pub struct MachineV2<T> {
+pub struct Machine<T> {
     row_a: Vector<T>,
     row_b: Vector<T>,
     row_c: Vector<T>,
     row_d: Vector<T>,
 }
 
-impl<T> From<[u8; BUF_LEN_U8]> for MachineV2<T> {
+impl<T> From<[u8; BUF_LEN_U8]> for Machine<T> {
     #[inline(always)]
     fn from(value: [u8; BUF_LEN_U8]) -> Self {
         unsafe { transmute(value) }
     }
 }
 
-impl<T> From<MachineV2<T>> for [u8; BUF_LEN_U8] {
+impl<T> From<Machine<T>> for [u8; BUF_LEN_U8] {
     #[inline(always)]
-    fn from(value: MachineV2<T>) -> Self {
+    fn from(value: Machine<T>) -> Self {
         unsafe { transmute(value) }
     }
 }
 
-impl<T> Add for MachineV2<T>
+impl<T> Add for Machine<T>
 where
     Vector<T>: VectorOps,
 {
@@ -153,7 +153,7 @@ where
     }
 }
 
-impl<T> BitXor for MachineV2<T>
+impl<T> BitXor for Machine<T>
 where
     Vector<T>: VectorOps,
 {
@@ -170,7 +170,7 @@ where
     }
 }
 
-impl<T> MachineV2<T>
+impl<T> Machine<T>
 where
     T: Copy,
     Vector<T>: VectorOps,
