@@ -4,6 +4,7 @@ TODO: Module docs.
 
 mod avx2;
 mod avx512;
+mod neon;
 mod soft;
 mod sse2;
 
@@ -54,22 +55,30 @@ pub struct Vector<T> {
     _phantom: PhantomData<T>,
 }
 
-// impl<T> Vector<T> {
-//     #[inline(always)]
-//     pub fn reverse(&mut self) {
-//         self.inner.reverse();
-//     }
+impl<T> Vector<T> {
+    #[inline(always)]
+    pub fn cast<U>(self) -> Vector<U> {
+        Vector {
+            inner: self.inner,
+            _phantom: PhantomData,
+        }
+    }
 
-//     #[inline(always)]
-//     pub fn increment_idx<const IDX: usize>(&mut self) {
-//         todo!()
-//     }
-// }
+    #[inline(always)]
+    pub fn reverse(&mut self) {
+        self.inner.reverse();
+    }
+
+    #[inline(always)]
+    pub fn increment_idx<const IDX: usize>(&mut self) {
+        todo!()
+    }
+}
 
 macro_rules! rotate_left_epi32 {
     ($vector: expr, $LEFT_SHIFT: expr) => {{
-        const LEFT_SHIFT: i64 = $LEFT_SHIFT;
-        const RIGHT_SHIFT: i64 = 32 - LEFT_SHIFT;
+        const LEFT_SHIFT: i32 = $LEFT_SHIFT;
+        const RIGHT_SHIFT: i32 = i32::BITS as i32 - LEFT_SHIFT;
         let left_shift = $vector.shift_left::<LEFT_SHIFT>();
         let right_shift = $vector.shift_right::<RIGHT_SHIFT>();
         left_shift | right_shift
@@ -85,12 +94,12 @@ pub trait VectorOps:
     /// Not to be used directly.
     ///
     /// Shifts each internal `i32` by `K` places to the left.
-    fn shift_left<const K: i64>(self) -> Self;
+    fn shift_left<const K: i32>(self) -> Self;
 
     /// Not to be used directly.
     ///
     /// Shifts each internal `i32` by `K` places to the right.
-    fn shift_right<const K: i64>(self) -> Self;
+    fn shift_right<const K: i32>(self) -> Self;
 
     /// Shuffles the four internal 128-bit lanes using `MASK` as a destination mask.
     fn shuffle_128<const MASK: i32>(self) -> Self;

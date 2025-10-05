@@ -54,7 +54,7 @@ impl VectorOps for Vector<Soft> {
     }
 
     #[inline(always)]
-    fn shift_left<const K: i64>(mut self) -> Self {
+    fn shift_left<const K: i32>(mut self) -> Self {
         for i in 0..BUF_SIZE {
             self.inner[i] <<= K;
         }
@@ -62,7 +62,7 @@ impl VectorOps for Vector<Soft> {
     }
 
     #[inline(always)]
-    fn shift_right<const K: i64>(mut self) -> Self {
+    fn shift_right<const K: i32>(mut self) -> Self {
         for i in 0..BUF_SIZE {
             self.inner[i] >>= K;
         }
@@ -78,25 +78,25 @@ impl VectorOps for Vector<Soft> {
 
         let old = unsafe { self.inner.i32x16 };
 
-        // First lane
+        // First 128-bit lane
         self.inner[0] = old[select::<MASK, 0>()];
         self.inner[1] = old[select::<MASK, 2>()];
         self.inner[2] = old[select::<MASK, 4>()];
         self.inner[3] = old[select::<MASK, 6>()];
 
-        // Second lane
+        // Second 128-bit lane
         self.inner[4] = old[4 + select::<MASK, 0>()];
         self.inner[5] = old[4 + select::<MASK, 2>()];
         self.inner[6] = old[4 + select::<MASK, 4>()];
         self.inner[7] = old[4 + select::<MASK, 6>()];
 
-        // Third lane
+        // Third 128-bit lane
         self.inner[8] = old[8 + select::<MASK, 0>()];
         self.inner[9] = old[8 + select::<MASK, 2>()];
         self.inner[10] = old[8 + select::<MASK, 4>()];
         self.inner[11] = old[8 + select::<MASK, 6>()];
 
-        // Fourth lane
+        // Fourth 128-bit lane
         self.inner[12] = old[12 + select::<MASK, 0>()];
         self.inner[13] = old[12 + select::<MASK, 2>()];
         self.inner[14] = old[12 + select::<MASK, 4>()];
