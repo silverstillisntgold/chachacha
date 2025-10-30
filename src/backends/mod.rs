@@ -76,13 +76,6 @@ impl<T> Vector<T> {
             _phantom: PhantomData,
         }
     }
-
-    #[inline(always)]
-    pub fn reverse(&mut self) {
-        unsafe {
-            self.inner.i32x16.reverse();
-        }
-    }
 }
 
 /// Emulates _mm512_rol_epi32 on the passed [`Vector`].
@@ -198,16 +191,16 @@ where
         // TODO: Potentially use explicit intrinsics for this.
         match V::VAR {
             Variants::Djb => unsafe {
-                row_d.inner.i64x8[7] = row_d.inner.i64x8[7].wrapping_add(0);
-                row_d.inner.i64x8[5] = row_d.inner.i64x8[5].wrapping_add(1);
-                row_d.inner.i64x8[3] = row_d.inner.i64x8[3].wrapping_add(2);
-                row_d.inner.i64x8[1] = row_d.inner.i64x8[1].wrapping_add(3);
+                row_d.inner.i64x8[0] = row_d.inner.i64x8[0].wrapping_add(0);
+                row_d.inner.i64x8[2] = row_d.inner.i64x8[2].wrapping_add(1);
+                row_d.inner.i64x8[4] = row_d.inner.i64x8[4].wrapping_add(2);
+                row_d.inner.i64x8[6] = row_d.inner.i64x8[6].wrapping_add(3);
             },
             Variants::Ietf => unsafe {
-                row_d.inner.i32x16[15] = row_d.inner.i32x16[15].wrapping_add(0);
-                row_d.inner.i32x16[11] = row_d.inner.i32x16[11].wrapping_add(1);
-                row_d.inner.i32x16[7] = row_d.inner.i32x16[7].wrapping_add(2);
-                row_d.inner.i32x16[3] = row_d.inner.i32x16[3].wrapping_add(3);
+                row_d.inner.i32x16[0] = row_d.inner.i32x16[0].wrapping_add(0);
+                row_d.inner.i32x16[4] = row_d.inner.i32x16[4].wrapping_add(1);
+                row_d.inner.i32x16[8] = row_d.inner.i32x16[8].wrapping_add(2);
+                row_d.inner.i32x16[12] = row_d.inner.i32x16[12].wrapping_add(3);
             },
         }
         Self {
@@ -222,16 +215,16 @@ where
     pub fn increment<V: Variant>(&mut self) {
         match V::VAR {
             Variants::Djb => unsafe {
-                self.row_d.inner.i64x8[7] = self.row_d.inner.i64x8[7].wrapping_add(1);
-                self.row_d.inner.i64x8[5] = self.row_d.inner.i64x8[5].wrapping_add(1);
-                self.row_d.inner.i64x8[3] = self.row_d.inner.i64x8[3].wrapping_add(1);
-                self.row_d.inner.i64x8[1] = self.row_d.inner.i64x8[1].wrapping_add(1);
+                self.row_d.inner.i64x8[0] = self.row_d.inner.i64x8[0].wrapping_add(1);
+                self.row_d.inner.i64x8[2] = self.row_d.inner.i64x8[2].wrapping_add(1);
+                self.row_d.inner.i64x8[4] = self.row_d.inner.i64x8[4].wrapping_add(1);
+                self.row_d.inner.i64x8[6] = self.row_d.inner.i64x8[6].wrapping_add(1);
             },
             Variants::Ietf => unsafe {
-                self.row_d.inner.i32x16[15] = self.row_d.inner.i32x16[15].wrapping_add(1);
-                self.row_d.inner.i32x16[11] = self.row_d.inner.i32x16[11].wrapping_add(1);
-                self.row_d.inner.i32x16[7] = self.row_d.inner.i32x16[7].wrapping_add(1);
-                self.row_d.inner.i32x16[3] = self.row_d.inner.i32x16[3].wrapping_add(1);
+                self.row_d.inner.i32x16[0] = self.row_d.inner.i32x16[0].wrapping_add(1);
+                self.row_d.inner.i32x16[4] = self.row_d.inner.i32x16[4].wrapping_add(1);
+                self.row_d.inner.i32x16[8] = self.row_d.inner.i32x16[8].wrapping_add(1);
+                self.row_d.inner.i32x16[12] = self.row_d.inner.i32x16[12].wrapping_add(1);
             },
         }
     }
@@ -277,6 +270,9 @@ where
 
     #[inline(always)]
     fn reorder(self) -> Self {
+        #[derive(Clone, Copy)]
+        #[repr(C)]
+        struct Internal([i32; 4]);
         /*[
             _mm512_extracti32x4_epi32(self.state[0], 3),
             _mm512_extracti32x4_epi32(self.state[1], 3),
@@ -301,26 +297,44 @@ where
             _mm512_extracti32x4_epi32(self.state[2], 0),
             _mm512_extracti32x4_epi32(self.state[3], 0),
         ],*/
-        let tmp: [[[i32; 4]; 4]; 4] = unsafe { transmute(self) };
+        let tmp: [[Internal; 4]; 4] = unsafe { transmute(self) };
         unsafe {
             transmute([
-                [tmp[0][3], tmp[1][3], tmp[2][3], tmp[3][3]],
-                [tmp[0][2], tmp[1][2], tmp[2][2], tmp[3][2]],
-                [tmp[0][1], tmp[1][1], tmp[2][1], tmp[3][1]],
-                [tmp[0][0], tmp[1][0], tmp[2][0], tmp[3][0]],
+                [
+                    tmp[0][0], //
+                    tmp[1][0], //
+                    tmp[2][0], //
+                    tmp[3][0],
+                ],
+                [
+                    tmp[0][1], //
+                    tmp[1][1], //
+                    tmp[2][1], //
+                    tmp[3][1],
+                ],
+                [
+                    tmp[0][2], //
+                    tmp[1][2], //
+                    tmp[2][2], //
+                    tmp[3][2],
+                ],
+                [
+                    tmp[0][3], //
+                    tmp[1][3], //
+                    tmp[2][3], //
+                    tmp[3][3],
+                ],
             ])
         }
     }
 
     #[inline(always)]
     pub fn get_inner(self, buf: &mut [u8; BUF_LEN_U8]) {
-        // TODO: Data probably needs to be rearranged before being returned.
         *buf = self.reorder().into();
     }
 
     #[inline(always)]
     pub fn xor_inner(self, buf: &mut [u8; BUF_LEN_U8]) {
-        // TODO: Same issue as in `get_inner`.
         let as_bytes = <[u8; BUF_LEN_U8]>::from(self.reorder());
         // Expected to autovectorize.
         for i in 0..BUF_LEN_U8 {
