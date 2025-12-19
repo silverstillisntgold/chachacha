@@ -17,7 +17,7 @@ impl Add for Vector<SSE2> {
     fn add(mut self, rhs: Self) -> Self::Output {
         unsafe {
             for i in 0..BUF_SIZE_U128 {
-                self.inner.u128x4[i] = _mm_add_epi32(self.inner.u128x4[i], rhs.inner.u128x4[i]);
+                self.u128x4[i] = _mm_add_epi32(self.u128x4[i], rhs.u128x4[i]);
             }
             self
         }
@@ -31,7 +31,7 @@ impl BitOr for Vector<SSE2> {
     fn bitor(mut self, rhs: Self) -> Self::Output {
         unsafe {
             for i in 0..BUF_SIZE_U128 {
-                self.inner.u128x4[i] = _mm_or_si128(self.inner.u128x4[i], rhs.inner.u128x4[i]);
+                self.u128x4[i] = _mm_or_si128(self.u128x4[i], rhs.u128x4[i]);
             }
             self
         }
@@ -45,7 +45,7 @@ impl BitXor for Vector<SSE2> {
     fn bitxor(mut self, rhs: Self) -> Self::Output {
         unsafe {
             for i in 0..BUF_SIZE_U128 {
-                self.inner.u128x4[i] = _mm_xor_si128(self.inner.u128x4[i], rhs.inner.u128x4[i]);
+                self.u128x4[i] = _mm_xor_si128(self.u128x4[i], rhs.u128x4[i]);
             }
             self
         }
@@ -63,7 +63,7 @@ impl VectorOps for Vector<SSE2> {
         unsafe {
             let count = _mm_set1_epi64x(K as i64);
             for i in 0..BUF_SIZE_U128 {
-                self.inner.u128x4[i] = _mm_sll_epi32(self.inner.u128x4[i], count);
+                self.u128x4[i] = _mm_sll_epi32(self.u128x4[i], count);
             }
             self
         }
@@ -74,7 +74,7 @@ impl VectorOps for Vector<SSE2> {
         unsafe {
             let count = _mm_set1_epi64x(K as i64);
             for i in 0..BUF_SIZE_U128 {
-                self.inner.u128x4[i] = _mm_srl_epi32(self.inner.u128x4[i], count);
+                self.u128x4[i] = _mm_srl_epi32(self.u128x4[i], count);
             }
             self
         }
@@ -84,7 +84,7 @@ impl VectorOps for Vector<SSE2> {
     fn shuffle_internal<const MASK: i32>(mut self) -> Self {
         unsafe {
             for i in 0..BUF_SIZE_U128 {
-                self.inner.u128x4[i] = _mm_shuffle_epi32::<MASK>(self.inner.u128x4[i]);
+                self.u128x4[i] = _mm_shuffle_epi32::<MASK>(self.u128x4[i]);
             }
             self
         }

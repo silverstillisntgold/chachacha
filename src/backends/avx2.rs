@@ -17,7 +17,7 @@ impl Add for Vector<AVX2> {
     fn add(mut self, rhs: Self) -> Self::Output {
         unsafe {
             for i in 0..BUF_SIZE_U256 {
-                self.inner.u256x2[i] = _mm256_add_epi32(self.inner.u256x2[i], rhs.inner.u256x2[i]);
+                self.u256x2[i] = _mm256_add_epi32(self.u256x2[i], rhs.u256x2[i]);
             }
             self
         }
@@ -31,7 +31,7 @@ impl BitOr for Vector<AVX2> {
     fn bitor(mut self, rhs: Self) -> Self::Output {
         unsafe {
             for i in 0..BUF_SIZE_U256 {
-                self.inner.u256x2[i] = _mm256_or_si256(self.inner.u256x2[i], rhs.inner.u256x2[i]);
+                self.u256x2[i] = _mm256_or_si256(self.u256x2[i], rhs.u256x2[i]);
             }
             self
         }
@@ -45,7 +45,7 @@ impl BitXor for Vector<AVX2> {
     fn bitxor(mut self, rhs: Self) -> Self::Output {
         unsafe {
             for i in 0..BUF_SIZE_U256 {
-                self.inner.u256x2[i] = _mm256_xor_si256(self.inner.u256x2[i], rhs.inner.u256x2[i]);
+                self.u256x2[i] = _mm256_xor_si256(self.u256x2[i], rhs.u256x2[i]);
             }
             self
         }
@@ -67,7 +67,7 @@ impl VectorOps for Vector<AVX2> {
         unsafe {
             let count = _mm_set1_epi64x(K as i64);
             for i in 0..BUF_SIZE_U256 {
-                self.inner.u256x2[i] = _mm256_sll_epi32(self.inner.u256x2[i], count);
+                self.u256x2[i] = _mm256_sll_epi32(self.u256x2[i], count);
             }
             self
         }
@@ -78,7 +78,7 @@ impl VectorOps for Vector<AVX2> {
         unsafe {
             let count = _mm_set1_epi64x(K as i64);
             for i in 0..BUF_SIZE_U256 {
-                self.inner.u256x2[i] = _mm256_srl_epi32(self.inner.u256x2[i], count);
+                self.u256x2[i] = _mm256_srl_epi32(self.u256x2[i], count);
             }
             self
         }
@@ -88,7 +88,7 @@ impl VectorOps for Vector<AVX2> {
     fn shuffle_internal<const MASK: i32>(mut self) -> Self {
         unsafe {
             for i in 0..BUF_SIZE_U256 {
-                self.inner.u256x2[i] = _mm256_shuffle_epi32::<MASK>(self.inner.u256x2[i]);
+                self.u256x2[i] = _mm256_shuffle_epi32::<MASK>(self.u256x2[i]);
             }
             self
         }

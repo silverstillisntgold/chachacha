@@ -45,7 +45,10 @@ const BUF_SIZE_U16: usize = BUF_SIZE_U8 / 2;
 const BUF_SIZE_U32: usize = BUF_SIZE_U16 / 2;
 const BUF_SIZE_U64: usize = BUF_SIZE_U32 / 2;
 const BUF_SIZE_U128: usize = BUF_SIZE_U64 / 2;
-#[cfg_attr(target_feature = "neon", allow(unused))]
+#[cfg_attr(
+    any(not(target_feature = "avx2"), target_feature = "neon"),
+    allow(unused)
+)]
 const BUF_SIZE_U256: usize = BUF_SIZE_U128 / 2;
 
 #[derive(Clone, Copy)]
@@ -220,16 +223,16 @@ where
         // TODO: Potentially use explicit intrinsics for this.
         match V::VAR {
             Variants::Djb => unsafe {
-                row_d.inner.u64x8[0] = row_d.inner.u64x8[0].wrapping_add(0);
-                row_d.inner.u64x8[2] = row_d.inner.u64x8[2].wrapping_add(1);
-                row_d.inner.u64x8[4] = row_d.inner.u64x8[4].wrapping_add(2);
-                row_d.inner.u64x8[6] = row_d.inner.u64x8[6].wrapping_add(3);
+                row_d.u64x8[0] = row_d.u64x8[0].wrapping_add(0);
+                row_d.u64x8[2] = row_d.u64x8[2].wrapping_add(1);
+                row_d.u64x8[4] = row_d.u64x8[4].wrapping_add(2);
+                row_d.u64x8[6] = row_d.u64x8[6].wrapping_add(3);
             },
             Variants::Ietf => unsafe {
-                row_d.inner.u32x16[0] = row_d.inner.u32x16[0].wrapping_add(0);
-                row_d.inner.u32x16[4] = row_d.inner.u32x16[4].wrapping_add(1);
-                row_d.inner.u32x16[8] = row_d.inner.u32x16[8].wrapping_add(2);
-                row_d.inner.u32x16[12] = row_d.inner.u32x16[12].wrapping_add(3);
+                row_d.u32x16[0] = row_d.u32x16[0].wrapping_add(0);
+                row_d.u32x16[4] = row_d.u32x16[4].wrapping_add(1);
+                row_d.u32x16[8] = row_d.u32x16[8].wrapping_add(2);
+                row_d.u32x16[12] = row_d.u32x16[12].wrapping_add(3);
             },
         }
         Self {
@@ -244,16 +247,16 @@ where
     pub fn increment<V: Variant>(&mut self) {
         match V::VAR {
             Variants::Djb => unsafe {
-                self.row_d.inner.u64x8[0] = self.row_d.inner.u64x8[0].wrapping_add(4);
-                self.row_d.inner.u64x8[2] = self.row_d.inner.u64x8[2].wrapping_add(4);
-                self.row_d.inner.u64x8[4] = self.row_d.inner.u64x8[4].wrapping_add(4);
-                self.row_d.inner.u64x8[6] = self.row_d.inner.u64x8[6].wrapping_add(4);
+                self.row_d.u64x8[0] = self.row_d.u64x8[0].wrapping_add(4);
+                self.row_d.u64x8[2] = self.row_d.u64x8[2].wrapping_add(4);
+                self.row_d.u64x8[4] = self.row_d.u64x8[4].wrapping_add(4);
+                self.row_d.u64x8[6] = self.row_d.u64x8[6].wrapping_add(4);
             },
             Variants::Ietf => unsafe {
-                self.row_d.inner.u32x16[0] = self.row_d.inner.u32x16[0].wrapping_add(4);
-                self.row_d.inner.u32x16[4] = self.row_d.inner.u32x16[4].wrapping_add(4);
-                self.row_d.inner.u32x16[8] = self.row_d.inner.u32x16[8].wrapping_add(4);
-                self.row_d.inner.u32x16[12] = self.row_d.inner.u32x16[12].wrapping_add(4);
+                self.row_d.u32x16[0] = self.row_d.u32x16[0].wrapping_add(4);
+                self.row_d.u32x16[4] = self.row_d.u32x16[4].wrapping_add(4);
+                self.row_d.u32x16[8] = self.row_d.u32x16[8].wrapping_add(4);
+                self.row_d.u32x16[12] = self.row_d.u32x16[12].wrapping_add(4);
             },
         }
     }

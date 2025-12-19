@@ -15,8 +15,10 @@ impl Add for Vector<AVX512> {
 
     #[inline(always)]
     fn add(mut self, rhs: Self) -> Self::Output {
-        self.u512x1 = unsafe { _mm512_add_epi32(self.u512x1, rhs.u512x1) };
-        self
+        unsafe {
+            self.u512x1 = _mm512_add_epi32(self.u512x1, rhs.u512x1);
+            self
+        }
     }
 }
 
@@ -25,8 +27,10 @@ impl BitOr for Vector<AVX512> {
 
     #[inline(always)]
     fn bitor(mut self, rhs: Self) -> Self::Output {
-        self.u512x1 = unsafe { _mm512_or_si512(self.u512x1, rhs.u512x1) };
-        self
+        unsafe {
+            self.u512x1 = _mm512_or_si512(self.u512x1, rhs.u512x1);
+            self
+        }
     }
 }
 
@@ -35,8 +39,10 @@ impl BitXor for Vector<AVX512> {
 
     #[inline(always)]
     fn bitxor(mut self, rhs: Self) -> Self::Output {
-        self.u512x1 = unsafe { _mm512_xor_si512(self.u512x1, rhs.u512x1) };
-        self
+        unsafe {
+            self.u512x1 = _mm512_xor_si512(self.u512x1, rhs.u512x1);
+            self
+        }
     }
 }
 
