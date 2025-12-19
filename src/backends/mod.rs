@@ -45,10 +45,7 @@ const BUF_SIZE_U16: usize = BUF_SIZE_U8 / 2;
 const BUF_SIZE_U32: usize = BUF_SIZE_U16 / 2;
 const BUF_SIZE_U64: usize = BUF_SIZE_U32 / 2;
 const BUF_SIZE_U128: usize = BUF_SIZE_U64 / 2;
-#[cfg_attr(
-    any(not(target_feature = "avx2"), target_feature = "neon"),
-    allow(unused)
-)]
+#[cfg_attr(not(target_feature = "avx2"), allow(unused))]
 const BUF_SIZE_U256: usize = BUF_SIZE_U128 / 2;
 
 #[derive(Clone, Copy)]
@@ -299,16 +296,13 @@ where
 
     #[inline(always)]
     fn reorder(self) -> Self {
-        #[derive(Clone, Copy)]
-        #[repr(C, align(16))]
-        struct Chunk([u32; 4]);
-        let tmp: [[Chunk; 4]; 4] = unsafe { transmute(self) };
+        let tmp: [[Row; BUF_SIZE_U128]; BUF_SIZE_U128] = unsafe { transmute(self) };
         unsafe {
             transmute([
-                [tmp[0][0], tmp[1][0], tmp[2][0], tmp[3][0]], // lane 0 (counter+0)
-                [tmp[0][1], tmp[1][1], tmp[2][1], tmp[3][1]], // lane 1 (counter+1)
-                [tmp[0][2], tmp[1][2], tmp[2][2], tmp[3][2]], // lane 2 (counter+2)
-                [tmp[0][3], tmp[1][3], tmp[2][3], tmp[3][3]], // lane 3 (counter+3)
+                [tmp[0][0], tmp[1][0], tmp[2][0], tmp[3][0]], // lane 1 (counter + 0)
+                [tmp[0][1], tmp[1][1], tmp[2][1], tmp[3][1]], // lane 2 (counter + 1)
+                [tmp[0][2], tmp[1][2], tmp[2][2], tmp[3][2]], // lane 3 (counter + 2)
+                [tmp[0][3], tmp[1][3], tmp[2][3], tmp[3][3]], // lane 4 (counter + 3)
             ])
         }
     }
