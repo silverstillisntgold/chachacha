@@ -12,7 +12,7 @@ impl Add for Vector<Soft> {
     #[inline(always)]
     fn add(mut self, rhs: Self) -> Self::Output {
         for i in 0..BUF_SIZE_U32 {
-            // Explicitly use `wrapping_add` to avoid debug builds losing their shit.
+            // Need to use `wrapping_add` or debug builds will lose their shit.
             self.inner[i] = self.inner[i].wrapping_add(rhs.inner[i]);
         }
         self
@@ -72,6 +72,8 @@ impl VectorOps for Vector<Soft> {
         const fn select<const MASK: i32, const K: i32>() -> usize {
             (MASK as usize >> K) & 0b_11
         }
+        // Testing demonstrates that LLVM has no problem turning this into optimal
+        // shuffling operations on targets which support them.
         self.inner.u32x16 = [
             // First 128-bit lane.
             self.inner[select::<MASK, 0>()],

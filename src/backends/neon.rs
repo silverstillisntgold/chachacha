@@ -111,7 +111,7 @@ impl VectorOps for Vector<Neon> {
         // since doing this with neon intrinsics when our input is `MASK` is kind
         // of aids.
         // The soft implementation is written in such a way that the compiler should
-        // still emit optimal assembly in release mode.
+        // still emit optimal shuffling assembly in release mode.
         self.cast::<super::soft::Soft>()
             .shuffle_internal::<MASK>()
             .cast()
