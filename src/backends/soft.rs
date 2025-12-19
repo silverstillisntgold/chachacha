@@ -1,4 +1,4 @@
-use super::{BUF_SIZE, Vector, VectorOps};
+use super::{BUF_SIZE_U32, Vector, VectorOps};
 use crate::util::Row;
 use core::mem::transmute;
 use core::ops::{Add, BitOr, BitXor};
@@ -11,7 +11,7 @@ impl Add for Vector<Soft> {
 
     #[inline(always)]
     fn add(mut self, rhs: Self) -> Self::Output {
-        for i in 0..BUF_SIZE {
+        for i in 0..BUF_SIZE_U32 {
             // Explicitly use `wrapping_add` to avoid debug builds losing their shit.
             self.inner[i] = self.inner[i].wrapping_add(rhs.inner[i]);
         }
@@ -24,7 +24,7 @@ impl BitOr for Vector<Soft> {
 
     #[inline(always)]
     fn bitor(mut self, rhs: Self) -> Self::Output {
-        for i in 0..BUF_SIZE {
+        for i in 0..BUF_SIZE_U32 {
             self.inner[i] |= rhs.inner[i];
         }
         self
@@ -36,7 +36,7 @@ impl BitXor for Vector<Soft> {
 
     #[inline(always)]
     fn bitxor(mut self, rhs: Self) -> Self::Output {
-        for i in 0..BUF_SIZE {
+        for i in 0..BUF_SIZE_U32 {
             self.inner[i] ^= rhs.inner[i];
         }
         self
@@ -46,14 +46,14 @@ impl BitXor for Vector<Soft> {
 impl VectorOps for Vector<Soft> {
     #[inline(always)]
     fn broadcast_row(value: Row) -> Self {
-        const SIZE: usize = size_of::<[i32; BUF_SIZE]>() / size_of::<Row>();
+        const SIZE: usize = size_of::<[u32; BUF_SIZE_U32]>() / size_of::<Row>();
         let tmp = [value; SIZE];
         unsafe { transmute(tmp) }
     }
 
     #[inline(always)]
     fn shift_left<const K: i32>(mut self) -> Self {
-        for i in 0..BUF_SIZE {
+        for i in 0..BUF_SIZE_U32 {
             self.inner[i] <<= K;
         }
         self
@@ -61,7 +61,7 @@ impl VectorOps for Vector<Soft> {
 
     #[inline(always)]
     fn shift_right<const K: i32>(mut self) -> Self {
-        for i in 0..BUF_SIZE {
+        for i in 0..BUF_SIZE_U32 {
             self.inner[i] >>= K;
         }
         self
@@ -72,7 +72,7 @@ impl VectorOps for Vector<Soft> {
         const fn select<const MASK: i32, const K: i32>() -> usize {
             (MASK as usize >> K) & 0b_11
         }
-        self.inner.i32x16 = [
+        self.inner.u32x16 = [
             // First 128-bit lane.
             self.inner[select::<MASK, 0>()],
             self.inner[select::<MASK, 2>()],

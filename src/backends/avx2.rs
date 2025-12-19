@@ -79,7 +79,7 @@ impl VectorOps for Vector<AVX2> {
     fn broadcast_row(value: Row) -> Self {
         unsafe {
             let tmp = transmute(value);
-            Internal([_mm256_broadcastd_epi32(tmp); LOCAL_SIZE]).into()
+            Internal([_mm256_broadcastsi128_si256(tmp); LOCAL_SIZE]).into()
         }
     }
 

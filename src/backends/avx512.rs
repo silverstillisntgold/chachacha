@@ -53,7 +53,7 @@ impl VectorOps for Vector<AVX512> {
     fn broadcast_row(value: Row) -> Self {
         unsafe {
             let tmp = transmute(value);
-            _mm512_broadcastd_epi32(tmp).into()
+            _mm512_broadcast_i32x4(tmp).into()
         }
     }
 

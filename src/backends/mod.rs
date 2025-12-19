@@ -26,7 +26,8 @@ cfg_if::cfg_if! {
     }
 }
 
-use crate::{util::*, variations::*};
+use crate::util::*;
+use crate::variations::*;
 use core::{
     marker::PhantomData,
     mem::transmute,
@@ -34,49 +35,49 @@ use core::{
 };
 
 const AVX512_REG_SIZE: usize = 512;
-const BUF_SIZE: usize = AVX512_REG_SIZE / i32::BITS as usize;
-const BUF_SIZE_HALF: usize = BUF_SIZE / 2;
+const BUF_SIZE_U32: usize = AVX512_REG_SIZE / u32::BITS as usize;
+const BUF_SIZE_U64: usize = BUF_SIZE_U32 / 2;
 
 #[derive(Clone, Copy)]
 #[repr(C, align(64))]
 union Internal {
-    i32x16: [i32; BUF_SIZE],
-    i64x8: [i64; BUF_SIZE_HALF],
+    u32x16: [u32; BUF_SIZE_U32],
+    u64x8: [u64; BUF_SIZE_U64],
 }
 
 impl Deref for Internal {
-    type Target = [i32; BUF_SIZE];
+    type Target = [u32; BUF_SIZE_U32];
 
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
-        unsafe { &self.i32x16 }
+        unsafe { &self.u32x16 }
     }
 }
 
 impl DerefMut for Internal {
     #[inline(always)]
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { &mut self.i32x16 }
+        unsafe { &mut self.u32x16 }
     }
 }
 
 /// Represents a single row of four side-by-side ChaCha instances.
 #[derive(Clone, Copy)]
-#[repr(C, align(64))]
+#[repr(C)]
 pub struct Vector<T> {
     inner: Internal,
     _phantom: PhantomData<T>,
 }
 
-impl<T> Vector<T> {
-    #[inline(always)]
-    pub fn cast<U>(self) -> Vector<U> {
-        Vector {
-            inner: self.inner,
-            _phantom: PhantomData,
-        }
-    }
-}
+// impl<T> Vector<T> {
+//     #[inline(always)]
+//     pub fn cast<U>(self) -> Vector<U> {
+//         Vector {
+//             inner: self.inner,
+//             _phantom: PhantomData,
+//         }
+//     }
+// }
 
 /// Emulates _mm512_rol_epi32 on the passed [`Vector`].
 macro_rules! rotate_left_epi32 {
@@ -114,9 +115,10 @@ pub trait VectorOps:
         self.shuffle_internal::<MASK>()
     }
 
-    /// Shuffles the four internal 128-bit lanes using `MASK` as the destination mask.
+    /// Not to be used directly.
     ///
-    /// Emulates the _mm512_shuffle_epi32 instruction.
+    /// Shuffles the four internal 128-bit lanes using `MASK` as the destination mask,
+    /// emulating the _mm512_shuffle_epi32 instruction.
     fn shuffle_internal<const MASK: i32>(self) -> Self;
 }
 
@@ -191,16 +193,16 @@ where
         // TODO: Potentially use explicit intrinsics for this.
         match V::VAR {
             Variants::Djb => unsafe {
-                row_d.inner.i64x8[0] = row_d.inner.i64x8[0].wrapping_add(0);
-                row_d.inner.i64x8[2] = row_d.inner.i64x8[2].wrapping_add(1);
-                row_d.inner.i64x8[4] = row_d.inner.i64x8[4].wrapping_add(2);
-                row_d.inner.i64x8[6] = row_d.inner.i64x8[6].wrapping_add(3);
+                row_d.inner.u64x8[0] = row_d.inner.u64x8[0].wrapping_add(0);
+                row_d.inner.u64x8[2] = row_d.inner.u64x8[2].wrapping_add(1);
+                row_d.inner.u64x8[4] = row_d.inner.u64x8[4].wrapping_add(2);
+                row_d.inner.u64x8[6] = row_d.inner.u64x8[6].wrapping_add(3);
             },
             Variants::Ietf => unsafe {
-                row_d.inner.i32x16[0] = row_d.inner.i32x16[0].wrapping_add(0);
-                row_d.inner.i32x16[4] = row_d.inner.i32x16[4].wrapping_add(1);
-                row_d.inner.i32x16[8] = row_d.inner.i32x16[8].wrapping_add(2);
-                row_d.inner.i32x16[12] = row_d.inner.i32x16[12].wrapping_add(3);
+                row_d.inner.u32x16[0] = row_d.inner.u32x16[0].wrapping_add(0);
+                row_d.inner.u32x16[4] = row_d.inner.u32x16[4].wrapping_add(1);
+                row_d.inner.u32x16[8] = row_d.inner.u32x16[8].wrapping_add(2);
+                row_d.inner.u32x16[12] = row_d.inner.u32x16[12].wrapping_add(3);
             },
         }
         Self {
@@ -215,16 +217,16 @@ where
     pub fn increment<V: Variant>(&mut self) {
         match V::VAR {
             Variants::Djb => unsafe {
-                self.row_d.inner.i64x8[0] = self.row_d.inner.i64x8[0].wrapping_add(1);
-                self.row_d.inner.i64x8[2] = self.row_d.inner.i64x8[2].wrapping_add(1);
-                self.row_d.inner.i64x8[4] = self.row_d.inner.i64x8[4].wrapping_add(1);
-                self.row_d.inner.i64x8[6] = self.row_d.inner.i64x8[6].wrapping_add(1);
+                self.row_d.inner.u64x8[0] = self.row_d.inner.u64x8[0].wrapping_add(4);
+                self.row_d.inner.u64x8[2] = self.row_d.inner.u64x8[2].wrapping_add(4);
+                self.row_d.inner.u64x8[4] = self.row_d.inner.u64x8[4].wrapping_add(4);
+                self.row_d.inner.u64x8[6] = self.row_d.inner.u64x8[6].wrapping_add(4);
             },
             Variants::Ietf => unsafe {
-                self.row_d.inner.i32x16[0] = self.row_d.inner.i32x16[0].wrapping_add(1);
-                self.row_d.inner.i32x16[4] = self.row_d.inner.i32x16[4].wrapping_add(1);
-                self.row_d.inner.i32x16[8] = self.row_d.inner.i32x16[8].wrapping_add(1);
-                self.row_d.inner.i32x16[12] = self.row_d.inner.i32x16[12].wrapping_add(1);
+                self.row_d.inner.u32x16[0] = self.row_d.inner.u32x16[0].wrapping_add(4);
+                self.row_d.inner.u32x16[4] = self.row_d.inner.u32x16[4].wrapping_add(4);
+                self.row_d.inner.u32x16[8] = self.row_d.inner.u32x16[8].wrapping_add(4);
+                self.row_d.inner.u32x16[12] = self.row_d.inner.u32x16[12].wrapping_add(4);
             },
         }
     }
@@ -236,7 +238,7 @@ where
         self.row_d = self.row_d ^ self.row_a;
         self.row_d = rotate_left_epi32!(self.row_d, 16);
         // Second quarter round.
-        self.row_c = self.row_c + self.row_c;
+        self.row_c = self.row_c + self.row_d;
         self.row_b = self.row_b ^ self.row_c;
         self.row_b = rotate_left_epi32!(self.row_b, 12);
         // Third quarter round.
@@ -244,7 +246,7 @@ where
         self.row_d = self.row_d ^ self.row_a;
         self.row_d = rotate_left_epi32!(self.row_d, 8);
         // Fourth quarter round.
-        self.row_c = self.row_c + self.row_c;
+        self.row_c = self.row_c + self.row_d;
         self.row_b = self.row_b ^ self.row_c;
         self.row_b = rotate_left_epi32!(self.row_b, 7);
     }
@@ -263,67 +265,23 @@ where
         self.single_round();
 
         // Undiagonolize lanes.
-        self.row_a = self.row_a.shuffle::<0b_10_01_00_11>();
-        self.row_c = self.row_c.shuffle::<0b_01_00_11_10>();
-        self.row_d = self.row_d.shuffle::<0b_00_11_10_01>();
+        self.row_c = self.row_c.shuffle::<0b_10_01_00_11>();
+        self.row_d = self.row_d.shuffle::<0b_01_00_11_10>();
+        self.row_a = self.row_a.shuffle::<0b_00_11_10_01>();
     }
 
     #[inline(always)]
     fn reorder(self) -> Self {
         #[derive(Clone, Copy)]
-        #[repr(C)]
-        struct Internal([i32; 4]);
-        /*[
-            _mm512_extracti32x4_epi32(self.state[0], 3),
-            _mm512_extracti32x4_epi32(self.state[1], 3),
-            _mm512_extracti32x4_epi32(self.state[2], 3),
-            _mm512_extracti32x4_epi32(self.state[3], 3),
-        ],
-        [
-            _mm512_extracti32x4_epi32(self.state[0], 2),
-            _mm512_extracti32x4_epi32(self.state[1], 2),
-            _mm512_extracti32x4_epi32(self.state[2], 2),
-            _mm512_extracti32x4_epi32(self.state[3], 2),
-        ],
-        [
-            _mm512_extracti32x4_epi32(self.state[0], 1),
-            _mm512_extracti32x4_epi32(self.state[1], 1),
-            _mm512_extracti32x4_epi32(self.state[2], 1),
-            _mm512_extracti32x4_epi32(self.state[3], 1),
-        ],
-        [
-            _mm512_extracti32x4_epi32(self.state[0], 0),
-            _mm512_extracti32x4_epi32(self.state[1], 0),
-            _mm512_extracti32x4_epi32(self.state[2], 0),
-            _mm512_extracti32x4_epi32(self.state[3], 0),
-        ],*/
-        let tmp: [[Internal; 4]; 4] = unsafe { transmute(self) };
+        #[repr(C, align(16))]
+        struct Chunk([u32; 4]);
+        let tmp: [[Chunk; 4]; 4] = unsafe { transmute(self) };
         unsafe {
             transmute([
-                [
-                    tmp[0][0], //
-                    tmp[1][0], //
-                    tmp[2][0], //
-                    tmp[3][0],
-                ],
-                [
-                    tmp[0][1], //
-                    tmp[1][1], //
-                    tmp[2][1], //
-                    tmp[3][1],
-                ],
-                [
-                    tmp[0][2], //
-                    tmp[1][2], //
-                    tmp[2][2], //
-                    tmp[3][2],
-                ],
-                [
-                    tmp[0][3], //
-                    tmp[1][3], //
-                    tmp[2][3], //
-                    tmp[3][3],
-                ],
+                [tmp[0][0], tmp[1][0], tmp[2][0], tmp[3][0]], // lane 0 (counter+0)
+                [tmp[0][1], tmp[1][1], tmp[2][1], tmp[3][1]], // lane 1 (counter+1)
+                [tmp[0][2], tmp[1][2], tmp[2][2], tmp[3][2]], // lane 2 (counter+2)
+                [tmp[0][3], tmp[1][3], tmp[2][3], tmp[3][3]], // lane 3 (counter+3)
             ])
         }
     }

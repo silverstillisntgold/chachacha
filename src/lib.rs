@@ -25,7 +25,7 @@ assert!(!all_zeros);
 */
 
 #![allow(clippy::missing_transmute_annotations)]
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 #![no_std]
 
 // The reference implementation is only used for testing the vectorized implementations
@@ -71,7 +71,6 @@ mod tests {
     use super::variations::*;
     use core::iter::repeat_with;
     use core::mem::transmute;
-    use ya_rand::*;
 
     const TEST_COUNT: usize = 1 << 6;
     const TEST_LEN: usize = 1 << 4;
@@ -118,37 +117,37 @@ mod tests {
     #[cfg(target_feature = "avx512f")]
     #[test]
     fn chacha_8_djb_avx512() {
-        test_chacha::<avx512::Matrix, R8, Djb>();
+        test_chacha::<avx512::AVX512, R8, Djb>();
     }
 
     #[cfg(target_feature = "avx512f")]
     #[test]
     fn chacha_8_ietf_avx512() {
-        test_chacha::<avx512::Matrix, R8, Ietf>();
+        test_chacha::<avx512::AVX512, R8, Ietf>();
     }
 
     #[cfg(target_feature = "avx512f")]
     #[test]
     fn chacha_12_djb_avx512() {
-        test_chacha::<avx512::Matrix, R12, Djb>();
+        test_chacha::<avx512::AVX512, R12, Djb>();
     }
 
     #[cfg(target_feature = "avx512f")]
     #[test]
     fn chacha_12_ietf_avx512() {
-        test_chacha::<avx512::Matrix, R12, Ietf>();
+        test_chacha::<avx512::AVX512, R12, Ietf>();
     }
 
     #[cfg(target_feature = "avx512f")]
     #[test]
     fn chacha_20_djb_avx512() {
-        test_chacha::<avx512::Matrix, R20, Djb>();
+        test_chacha::<avx512::AVX512, R20, Djb>();
     }
 
     #[cfg(target_feature = "avx512f")]
     #[test]
     fn chacha_20_ietf_avx512() {
-        test_chacha::<avx512::Matrix, R20, Ietf>();
+        test_chacha::<avx512::AVX512, R20, Ietf>();
     }
 
     #[cfg(target_feature = "avx2")]
@@ -258,10 +257,9 @@ mod tests {
         T: Copy,
         Vector<T>: VectorOps,
     {
-        let mut rng = new_rng();
         for i in 0..TEST_COUNT {
             let mut seed = [0; SEED_LEN_U8];
-            seed.fill_with(|| rng.u8());
+            seed.fill_with(|| getrandom::u64().unwrap() as u8);
             // The difference between the djb/ietf variants is only apparent
             // when index 12 crosses the `u32::MAX` threshold, since that's the
             // point where ietf would only wrap index 12 around to 0, but the
@@ -285,7 +283,7 @@ mod tests {
             for _ in 0..TEST_COUNT {
                 let mut buf = [0; BIG_IF_TRU];
                 let mut buf_ref = [0; BIG_IF_TRU];
-                let size = rng.usize() % BIG_IF_TRU;
+                let size = getrandom::u64().unwrap() as usize % BIG_IF_TRU;
                 chacha.fill(&mut buf[..size]);
                 chacha_ref.fill(&mut buf_ref[..size]);
                 assert_eq!(buf, buf_ref);
