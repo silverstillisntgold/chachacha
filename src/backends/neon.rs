@@ -7,26 +7,26 @@ use core::ops::{Add, BitOr, BitXor};
 const LOCAL_SIZE: usize = 4;
 
 #[repr(C, align(64))]
-struct Internal([int32x4_t; LOCAL_SIZE]);
+struct Internal([uint32x4_t; LOCAL_SIZE]);
 
 #[derive(Clone, Copy)]
-pub struct NEON;
+pub struct Neon;
 
-impl From<Internal> for Vector<NEON> {
+impl From<Internal> for Vector<Neon> {
     #[inline(always)]
     fn from(value: Internal) -> Self {
         unsafe { transmute(value) }
     }
 }
 
-impl From<Vector<NEON>> for Internal {
+impl From<Vector<Neon>> for Internal {
     #[inline(always)]
-    fn from(value: Vector<NEON>) -> Self {
+    fn from(value: Vector<Neon>) -> Self {
         unsafe { transmute(value) }
     }
 }
 
-impl Add for Vector<NEON> {
+impl Add for Vector<Neon> {
     type Output = Self;
 
     #[inline(always)]
@@ -35,14 +35,14 @@ impl Add for Vector<NEON> {
             let mut lhs = Internal::from(self);
             let rhs = Internal::from(rhs);
             for i in 0..LOCAL_SIZE {
-                lhs.0[i] = vaddq_s32(lhs.0[i], rhs.0[i]);
+                lhs.0[i] = vaddq_u32(lhs.0[i], rhs.0[i]);
             }
             lhs.into()
         }
     }
 }
 
-impl BitOr for Vector<NEON> {
+impl BitOr for Vector<Neon> {
     type Output = Self;
 
     #[inline(always)]
@@ -51,14 +51,14 @@ impl BitOr for Vector<NEON> {
             let mut lhs = Internal::from(self);
             let rhs = Internal::from(rhs);
             for i in 0..LOCAL_SIZE {
-                lhs.0[i] = vorrq_s32(lhs.0[i], rhs.0[i]);
+                lhs.0[i] = vorrq_u32(lhs.0[i], rhs.0[i]);
             }
             lhs.into()
         }
     }
 }
 
-impl BitXor for Vector<NEON> {
+impl BitXor for Vector<Neon> {
     type Output = Self;
 
     #[inline(always)]
@@ -67,14 +67,14 @@ impl BitXor for Vector<NEON> {
             let mut lhs = Internal::from(self);
             let rhs = Internal::from(rhs);
             for i in 0..LOCAL_SIZE {
-                lhs.0[i] = veorq_s32(lhs.0[i], rhs.0[i]);
+                lhs.0[i] = veorq_u32(lhs.0[i], rhs.0[i]);
             }
             lhs.into()
         }
     }
 }
 
-impl VectorOps for Vector<NEON> {
+impl VectorOps for Vector<Neon> {
     #[inline(always)]
     fn broadcast_row(value: Row) -> Self {
         unsafe {
@@ -88,7 +88,7 @@ impl VectorOps for Vector<NEON> {
         unsafe {
             let mut lhs = Internal::from(self);
             for i in 0..LOCAL_SIZE {
-                lhs.0[i] = vshlq_n_s32::<K>(lhs.0[i]);
+                lhs.0[i] = vshlq_n_u32::<K>(lhs.0[i]);
             }
             lhs.into()
         }
@@ -99,7 +99,7 @@ impl VectorOps for Vector<NEON> {
         unsafe {
             let mut lhs = Internal::from(self);
             for i in 0..LOCAL_SIZE {
-                lhs.0[i] = vshrq_n_s32::<K>(lhs.0[i]);
+                lhs.0[i] = vshrq_n_u32::<K>(lhs.0[i]);
             }
             lhs.into()
         }
@@ -110,8 +110,8 @@ impl VectorOps for Vector<NEON> {
         // Delegate lane shuffling to the implementation used for soft targets,
         // since doing this with neon intrinsics when our input is `MASK` is kind
         // of aids.
-        // The soft implementation is written in such a way that the compiler still
-        // emits optimal assembly in release mode.
+        // The soft implementation is written in such a way that the compiler should
+        // still emit optimal assembly in release mode.
         self.cast::<super::soft::Soft>()
             .shuffle_internal::<MASK>()
             .cast()

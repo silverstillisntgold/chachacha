@@ -20,7 +20,7 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_feature = "sse2")] {
         pub use sse2::SSE2 as VecType;
     } else if #[cfg(target_feature = "neon")] {
-        pub use neon::NEON as VecType;
+        pub use neon::Neon as VecType;
     } else {
         pub use soft::Soft as VecType;
     }
@@ -69,15 +69,15 @@ pub struct Vector<T> {
     _phantom: PhantomData<T>,
 }
 
-// impl<T> Vector<T> {
-//     #[inline(always)]
-//     pub fn cast<U>(self) -> Vector<U> {
-//         Vector {
-//             inner: self.inner,
-//             _phantom: PhantomData,
-//         }
-//     }
-// }
+impl<T> Vector<T> {
+    #[inline(always)]
+    pub fn cast<U>(self) -> Vector<U> {
+        Vector {
+            inner: self.inner,
+            _phantom: PhantomData,
+        }
+    }
+}
 
 /// Emulates _mm512_rol_epi32 on the passed [`Vector`].
 macro_rules! rotate_left_epi32 {

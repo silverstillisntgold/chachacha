@@ -81,37 +81,37 @@ mod tests {
     #[cfg(target_feature = "neon")]
     #[test]
     fn chacha_8_djb_neon() {
-        test_chacha::<neon::NEON, R8, Djb>();
+        test_chacha::<neon::Neon, R8, Djb>();
     }
 
     #[cfg(target_feature = "neon")]
     #[test]
     fn chacha_8_ietf_neon() {
-        test_chacha::<neon::NEON, R8, Ietf>();
+        test_chacha::<neon::Neon, R8, Ietf>();
     }
 
     #[cfg(target_feature = "neon")]
     #[test]
     fn chacha_12_djb_neon() {
-        test_chacha::<neon::NEON, R12, Djb>();
+        test_chacha::<neon::Neon, R12, Djb>();
     }
 
     #[cfg(target_feature = "neon")]
     #[test]
     fn chacha_12_ietf_neon() {
-        test_chacha::<neon::NEON, R12, Ietf>();
+        test_chacha::<neon::Neon, R12, Ietf>();
     }
 
     #[cfg(target_feature = "neon")]
     #[test]
     fn chacha_20_djb_neon() {
-        test_chacha::<neon::NEON, R20, Djb>();
+        test_chacha::<neon::Neon, R20, Djb>();
     }
 
     #[cfg(target_feature = "neon")]
     #[test]
     fn chacha_20_ietf_neon() {
-        test_chacha::<neon::NEON, R20, Ietf>();
+        test_chacha::<neon::Neon, R20, Ietf>();
     }
 
     #[cfg(target_feature = "avx512f")]
