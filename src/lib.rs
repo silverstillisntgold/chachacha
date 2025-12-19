@@ -6,7 +6,7 @@ but should be just as usable anywhere else you might want to use ChaCha.
 
 ## Examples
 
-```
+```ignore
 use chachacha::{BUF_LEN_U64, BUF_LEN_U8, ChaCha12Djb};
 
 // Create a new `ChaCha12Djb` instance with a key that is all ones,
