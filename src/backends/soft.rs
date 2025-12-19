@@ -1,6 +1,6 @@
-use super::{BUF_SIZE_U32, Vector, VectorOps};
+use super::{BUF_SIZE_U32, Internal, Vector, VectorOps};
 use crate::util::Row;
-use core::mem::transmute;
+use core::marker::PhantomData;
 use core::ops::{Add, BitOr, BitXor};
 
 #[derive(Clone, Copy)]
@@ -11,11 +11,13 @@ impl Add for Vector<Soft> {
 
     #[inline(always)]
     fn add(mut self, rhs: Self) -> Self::Output {
-        for i in 0..BUF_SIZE_U32 {
-            // Need to use `wrapping_add` or debug builds will lose their shit.
-            self.inner[i] = self.inner[i].wrapping_add(rhs.inner[i]);
+        unsafe {
+            for i in 0..BUF_SIZE_U32 {
+                // Need to use `wrapping_add` or debug builds will lose their shit.
+                self.u32x16[i] = self.u32x16[i].wrapping_add(rhs.u32x16[i]);
+            }
+            self
         }
-        self
     }
 }
 
@@ -24,10 +26,12 @@ impl BitOr for Vector<Soft> {
 
     #[inline(always)]
     fn bitor(mut self, rhs: Self) -> Self::Output {
-        for i in 0..BUF_SIZE_U32 {
-            self.inner[i] |= rhs.inner[i];
+        unsafe {
+            for i in 0..BUF_SIZE_U32 {
+                self.u32x16[i] |= rhs.u32x16[i];
+            }
+            self
         }
-        self
     }
 }
 
@@ -36,35 +40,42 @@ impl BitXor for Vector<Soft> {
 
     #[inline(always)]
     fn bitxor(mut self, rhs: Self) -> Self::Output {
-        for i in 0..BUF_SIZE_U32 {
-            self.inner[i] ^= rhs.inner[i];
+        unsafe {
+            for i in 0..BUF_SIZE_U32 {
+                self.u32x16[i] ^= rhs.u32x16[i];
+            }
+            self
         }
-        self
     }
 }
 
 impl VectorOps for Vector<Soft> {
     #[inline(always)]
     fn broadcast_row(value: Row) -> Self {
-        const SIZE: usize = size_of::<[u32; BUF_SIZE_U32]>() / size_of::<Row>();
-        let tmp = [value; SIZE];
-        unsafe { transmute(tmp) }
+        Self {
+            inner: Internal { rowx4: [value; _] },
+            _phantom: PhantomData,
+        }
     }
 
     #[inline(always)]
     fn shift_left<const K: i32>(mut self) -> Self {
-        for i in 0..BUF_SIZE_U32 {
-            self.inner[i] <<= K;
+        unsafe {
+            for i in 0..BUF_SIZE_U32 {
+                self.u32x16[i] <<= K;
+            }
+            self
         }
-        self
     }
 
     #[inline(always)]
     fn shift_right<const K: i32>(mut self) -> Self {
-        for i in 0..BUF_SIZE_U32 {
-            self.inner[i] >>= K;
+        unsafe {
+            for i in 0..BUF_SIZE_U32 {
+                self.u32x16[i] >>= K;
+            }
+            self
         }
-        self
     }
 
     #[inline(always)]
@@ -72,30 +83,32 @@ impl VectorOps for Vector<Soft> {
         const fn select<const MASK: i32, const K: i32>() -> usize {
             (MASK as usize >> K) & 0b_11
         }
-        // Testing demonstrates that LLVM has no problem turning this into optimal
-        // shuffling operations on targets which support them.
-        self.inner.u32x16 = [
-            // First 128-bit lane.
-            self.inner[select::<MASK, 0>()],
-            self.inner[select::<MASK, 2>()],
-            self.inner[select::<MASK, 4>()],
-            self.inner[select::<MASK, 6>()],
-            // Second 128-bit lane.
-            self.inner[4 + select::<MASK, 0>()],
-            self.inner[4 + select::<MASK, 2>()],
-            self.inner[4 + select::<MASK, 4>()],
-            self.inner[4 + select::<MASK, 6>()],
-            // Third 128-bit lane.
-            self.inner[8 + select::<MASK, 0>()],
-            self.inner[8 + select::<MASK, 2>()],
-            self.inner[8 + select::<MASK, 4>()],
-            self.inner[8 + select::<MASK, 6>()],
-            // Fourth 128-bit lane.
-            self.inner[12 + select::<MASK, 0>()],
-            self.inner[12 + select::<MASK, 2>()],
-            self.inner[12 + select::<MASK, 4>()],
-            self.inner[12 + select::<MASK, 6>()],
-        ];
-        self
+        unsafe {
+            // Testing demonstrates that LLVM has no problem turning this into optimal
+            // shuffling operations on targets which support them.
+            self.u32x16 = [
+                // First 128-bit lane.
+                self.u32x16[select::<MASK, 0>()],
+                self.u32x16[select::<MASK, 2>()],
+                self.u32x16[select::<MASK, 4>()],
+                self.u32x16[select::<MASK, 6>()],
+                // Second 128-bit lane.
+                self.u32x16[4 + select::<MASK, 0>()],
+                self.u32x16[4 + select::<MASK, 2>()],
+                self.u32x16[4 + select::<MASK, 4>()],
+                self.u32x16[4 + select::<MASK, 6>()],
+                // Third 128-bit lane.
+                self.u32x16[8 + select::<MASK, 0>()],
+                self.u32x16[8 + select::<MASK, 2>()],
+                self.u32x16[8 + select::<MASK, 4>()],
+                self.u32x16[8 + select::<MASK, 6>()],
+                // Fourth 128-bit lane.
+                self.u32x16[12 + select::<MASK, 0>()],
+                self.u32x16[12 + select::<MASK, 2>()],
+                self.u32x16[12 + select::<MASK, 4>()],
+                self.u32x16[12 + select::<MASK, 6>()],
+            ];
+            self
+        }
     }
 }

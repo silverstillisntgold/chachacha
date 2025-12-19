@@ -12,6 +12,7 @@ pub mod soft;
 #[cfg(target_feature = "sse2")]
 pub mod sse2;
 
+// We always choose the most powerful type available as the default.
 cfg_if::cfg_if! {
     if #[cfg(target_feature = "avx512f")] {
         pub use avx512::AVX512 as VecType;
@@ -28,37 +29,47 @@ cfg_if::cfg_if! {
 
 use crate::util::*;
 use crate::variations::*;
-use core::{
-    marker::PhantomData,
-    mem::transmute,
-    ops::{Add, BitOr, BitXor, Deref, DerefMut},
-};
+#[cfg(target_feature = "neon")]
+use core::arch::aarch64::*;
+#[cfg(target_arch = "x86")]
+use core::arch::x86::*;
+#[cfg(target_arch = "x86_64")]
+use core::arch::x86_64::*;
+use core::marker::PhantomData;
+use core::mem::transmute;
+use core::ops::{Add, BitOr, BitXor, Deref, DerefMut};
 
-const AVX512_REG_SIZE: usize = 512;
-const BUF_SIZE_U32: usize = AVX512_REG_SIZE / u32::BITS as usize;
+const AVX512_REG_BITS: usize = 512;
+const BUF_SIZE_U8: usize = AVX512_REG_BITS / u8::BITS as usize;
+const BUF_SIZE_U16: usize = BUF_SIZE_U8 / 2;
+const BUF_SIZE_U32: usize = BUF_SIZE_U16 / 2;
 const BUF_SIZE_U64: usize = BUF_SIZE_U32 / 2;
+const BUF_SIZE_U128: usize = BUF_SIZE_U64 / 2;
+#[cfg_attr(target_feature = "neon", allow(unused))]
+const BUF_SIZE_U256: usize = BUF_SIZE_U128 / 2;
 
 #[derive(Clone, Copy)]
 #[repr(C, align(64))]
-union Internal {
+pub union Internal {
+    // Integer representations.
+    u8x64: [u8; BUF_SIZE_U8],
+    u16x32: [u16; BUF_SIZE_U16],
     u32x16: [u32; BUF_SIZE_U32],
     u64x8: [u64; BUF_SIZE_U64],
-}
+    // `Row` is a union of integers.
+    rowx4: [Row; BUF_SIZE_U128],
 
-impl Deref for Internal {
-    type Target = [u32; BUF_SIZE_U32];
+    // X86 representations.
+    #[cfg(target_feature = "sse2")]
+    u128x4: [__m128i; BUF_SIZE_U128],
+    #[cfg(target_feature = "avx2")]
+    u256x2: [__m256i; BUF_SIZE_U256],
+    #[cfg(target_feature = "avx512f")]
+    u512x1: __m512i,
 
-    #[inline(always)]
-    fn deref(&self) -> &Self::Target {
-        unsafe { &self.u32x16 }
-    }
-}
-
-impl DerefMut for Internal {
-    #[inline(always)]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { &mut self.u32x16 }
-    }
+    // Neon representation.
+    #[cfg(target_feature = "neon")]
+    u128x4: [uint32x4_t; BUF_SIZE_U128],
 }
 
 /// Represents a single row of four side-by-side ChaCha instances.
@@ -67,6 +78,22 @@ impl DerefMut for Internal {
 pub struct Vector<T> {
     inner: Internal,
     _phantom: PhantomData<T>,
+}
+
+impl<T> Deref for Vector<T> {
+    type Target = Internal;
+
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<T> DerefMut for Vector<T> {
+    #[inline(always)]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
 }
 
 impl<T> Vector<T> {
@@ -93,18 +120,8 @@ macro_rules! rotate_left_epi32 {
 pub trait VectorOps:
     Add<Output = Self> + BitOr<Output = Self> + BitXor<Output = Self> + Sized
 {
-    /// Clones `value` to all four internal parallel ChaCha rows.
+    /// Copies `value` to all four internal parallel ChaCha rows.
     fn broadcast_row(value: Row) -> Self;
-
-    /// Not to be used directly.
-    ///
-    /// Shifts each internal `i32` by `K` places to the left.
-    fn shift_left<const K: i32>(self) -> Self;
-
-    /// Not to be used directly.
-    ///
-    /// Shifts each internal `i32` by `K` places to the right.
-    fn shift_right<const K: i32>(self) -> Self;
 
     /// Wrapper around `shuffle_internal`, ensuring `MASK` contains a valid value.
     #[inline(always)]
@@ -114,6 +131,16 @@ pub trait VectorOps:
         }
         self.shuffle_internal::<MASK>()
     }
+
+    /// Not to be used directly.
+    ///
+    /// Shifts each internal `u32` by `K` places to the left.
+    fn shift_left<const K: i32>(self) -> Self;
+
+    /// Not to be used directly.
+    ///
+    /// Shifts each internal `u32` by `K` places to the right.
+    fn shift_right<const K: i32>(self) -> Self;
 
     /// Not to be used directly.
     ///
@@ -255,15 +282,12 @@ where
     pub fn double_round(&mut self) {
         // First round.
         self.single_round();
-
         // Diagonolize lanes.
         self.row_a = self.row_a.shuffle::<0b_10_01_00_11>();
         self.row_c = self.row_c.shuffle::<0b_00_11_10_01>();
         self.row_d = self.row_d.shuffle::<0b_01_00_11_10>();
-
         // Second round.
         self.single_round();
-
         // Undiagonolize lanes.
         self.row_c = self.row_c.shuffle::<0b_10_01_00_11>();
         self.row_d = self.row_d.shuffle::<0b_01_00_11_10>();

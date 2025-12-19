@@ -1,6 +1,11 @@
 /*!
-Module containing useful constants/structs and the core [`Machine`] trait.
+Module containing useful constants/structs.
 */
+
+#[cfg(target_arch = "x86")]
+use core::arch::x86::__m128i;
+#[cfg(target_arch = "x86_64")]
+use core::arch::x86_64::__m128i;
 
 /// Size (in 8-bit integers) of a single ChaCha computation.
 pub const BUF_LEN_U8: usize = MATRIX_SIZE_U8 * DEPTH;
@@ -44,6 +49,9 @@ pub union Row {
     pub u16x8: [u16; 8],
     pub u32x4: [u32; 4],
     pub u64x2: [u64; 2],
+    // Used for broadcasting in avx2 and avx512 backends.
+    #[cfg(target_feature = "sse2")]
+    pub u128x1: __m128i,
 }
 
 /// `ChaChaCore` without the `PhantomData` types.

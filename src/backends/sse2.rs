@@ -1,46 +1,25 @@
-use super::{Vector, VectorOps};
+use super::soft::Soft;
+use super::{BUF_SIZE_U128, Vector, VectorOps};
 use crate::util::Row;
 #[cfg(target_arch = "x86")]
 use core::arch::x86::*;
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::*;
-use core::mem::transmute;
 use core::ops::{Add, BitOr, BitXor};
-
-const LOCAL_SIZE: usize = 4;
-
-#[repr(C, align(64))]
-struct Internal([__m128i; LOCAL_SIZE]);
 
 #[derive(Clone, Copy)]
 pub struct SSE2;
-
-impl From<Internal> for Vector<SSE2> {
-    #[inline(always)]
-    fn from(value: Internal) -> Self {
-        unsafe { transmute(value) }
-    }
-}
-
-impl From<Vector<SSE2>> for Internal {
-    #[inline(always)]
-    fn from(value: Vector<SSE2>) -> Self {
-        unsafe { transmute(value) }
-    }
-}
 
 impl Add for Vector<SSE2> {
     type Output = Self;
 
     #[inline(always)]
-    fn add(self, rhs: Self) -> Self::Output {
+    fn add(mut self, rhs: Self) -> Self::Output {
         unsafe {
-            let mut lhs = Internal::from(self);
-            let rhs = Internal::from(rhs);
-            for i in 0..LOCAL_SIZE {
-                lhs.0[i] = _mm_add_epi32(lhs.0[i], rhs.0[i]);
+            for i in 0..BUF_SIZE_U128 {
+                self.inner.u128x4[i] = _mm_add_epi32(self.inner.u128x4[i], rhs.inner.u128x4[i]);
             }
-            lhs.into()
+            self
         }
     }
 }
@@ -49,14 +28,12 @@ impl BitOr for Vector<SSE2> {
     type Output = Self;
 
     #[inline(always)]
-    fn bitor(self, rhs: Self) -> Self::Output {
+    fn bitor(mut self, rhs: Self) -> Self::Output {
         unsafe {
-            let mut lhs = Internal::from(self);
-            let rhs = Internal::from(rhs);
-            for i in 0..LOCAL_SIZE {
-                lhs.0[i] = _mm_or_si128(lhs.0[i], rhs.0[i]);
+            for i in 0..BUF_SIZE_U128 {
+                self.inner.u128x4[i] = _mm_or_si128(self.inner.u128x4[i], rhs.inner.u128x4[i]);
             }
-            lhs.into()
+            self
         }
     }
 }
@@ -65,14 +42,12 @@ impl BitXor for Vector<SSE2> {
     type Output = Self;
 
     #[inline(always)]
-    fn bitxor(self, rhs: Self) -> Self::Output {
+    fn bitxor(mut self, rhs: Self) -> Self::Output {
         unsafe {
-            let mut lhs = Internal::from(self);
-            let rhs = Internal::from(rhs);
-            for i in 0..LOCAL_SIZE {
-                lhs.0[i] = _mm_xor_si128(lhs.0[i], rhs.0[i]);
+            for i in 0..BUF_SIZE_U128 {
+                self.inner.u128x4[i] = _mm_xor_si128(self.inner.u128x4[i], rhs.inner.u128x4[i]);
             }
-            lhs.into()
+            self
         }
     }
 }
@@ -80,44 +55,38 @@ impl BitXor for Vector<SSE2> {
 impl VectorOps for Vector<SSE2> {
     #[inline(always)]
     fn broadcast_row(value: Row) -> Self {
-        unsafe {
-            let tmp = transmute(value);
-            Internal([tmp; LOCAL_SIZE]).into()
-        }
+        Vector::<Soft>::broadcast_row(value).cast()
     }
 
     #[inline(always)]
-    fn shift_left<const K: i32>(self) -> Self {
+    fn shift_left<const K: i32>(mut self) -> Self {
         unsafe {
             let count = _mm_set1_epi64x(K as i64);
-            let mut lhs = Internal::from(self);
-            for i in 0..LOCAL_SIZE {
-                lhs.0[i] = _mm_sll_epi32(lhs.0[i], count);
+            for i in 0..BUF_SIZE_U128 {
+                self.inner.u128x4[i] = _mm_sll_epi32(self.inner.u128x4[i], count);
             }
-            lhs.into()
+            self
         }
     }
 
     #[inline(always)]
-    fn shift_right<const K: i32>(self) -> Self {
+    fn shift_right<const K: i32>(mut self) -> Self {
         unsafe {
             let count = _mm_set1_epi64x(K as i64);
-            let mut lhs = Internal::from(self);
-            for i in 0..LOCAL_SIZE {
-                lhs.0[i] = _mm_srl_epi32(lhs.0[i], count);
+            for i in 0..BUF_SIZE_U128 {
+                self.inner.u128x4[i] = _mm_srl_epi32(self.inner.u128x4[i], count);
             }
-            lhs.into()
+            self
         }
     }
 
     #[inline(always)]
-    fn shuffle_internal<const MASK: i32>(self) -> Self {
+    fn shuffle_internal<const MASK: i32>(mut self) -> Self {
         unsafe {
-            let mut lhs = Internal::from(self);
-            for i in 0..LOCAL_SIZE {
-                lhs.0[i] = _mm_shuffle_epi32::<MASK>(lhs.0[i]);
+            for i in 0..BUF_SIZE_U128 {
+                self.inner.u128x4[i] = _mm_shuffle_epi32::<MASK>(self.inner.u128x4[i]);
             }
-            lhs.into()
+            self
         }
     }
 }
