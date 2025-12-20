@@ -13,12 +13,14 @@ jobs:
       RUSTFLAGS: -C target-cpu=native
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Install Rust
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
       - name: Update dependencies
         run: cargo update
+      - name: Build tests
+        run: cargo test --no-run
       - name: Run tests
         run: cargo test

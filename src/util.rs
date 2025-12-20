@@ -1,24 +1,31 @@
 /*!
-Module containing useful constants/structs and the core [`Machine`] trait.
+Module containing useful constants/structs.
 */
 
-use crate::variations::*;
-use core::ops::Add;
+#[cfg(target_arch = "x86")]
+use core::arch::x86::__m128i;
+#[cfg(target_arch = "x86_64")]
+use core::arch::x86_64::__m128i;
 
 /// Size (in 8-bit integers) of a single ChaCha computation.
 pub const BUF_LEN_U8: usize = MATRIX_SIZE_U8 * DEPTH;
 /// Size (in 64-bit integers) of a single ChaCha computation.
 pub const BUF_LEN_U64: usize = BUF_LEN_U8 / size_of::<u64>();
+
 /// Columns present in a standard ChaCha matrix.
 pub const COLUMNS: usize = 4;
 /// Rows present in a standard ChaCha matrix.
 pub const ROWS: usize = 4;
+
 /// Size (in 8-bit integers) of the raw seed for a ChaCha instance.
 pub const SEED_LEN_U8: usize = (ROWS - 1) * size_of::<Row>();
+/// Size (in 16-bit integers) of the raw seed for a ChaCha instance.
+pub const SEED_LEN_U16: usize = SEED_LEN_U8 / size_of::<u16>();
 /// Size (in 32-bit integers) of the raw seed for a ChaCha instance.
 pub const SEED_LEN_U32: usize = SEED_LEN_U8 / size_of::<u32>();
 /// Size (in 64-bit integers) of the raw seed for a ChaCha instance.
 pub const SEED_LEN_U64: usize = SEED_LEN_U8 / size_of::<u64>();
+
 /// Size (in 8-bit integers) of a reference ChaCha matrix.
 pub const MATRIX_SIZE_U8: usize = MATRIX_SIZE_U32 * size_of::<u32>();
 /// Size (in 32-bit integers) of a reference ChaCha matrix.
@@ -42,64 +49,17 @@ pub union Row {
     pub u16x8: [u16; 8],
     pub u32x4: [u32; 4],
     pub u64x2: [u64; 2],
+    // Used for broadcasting in avx2 and avx512 backends.
+    #[cfg(target_feature = "sse2")]
+    pub u128x1: __m128i,
 }
 
 /// `ChaChaCore` without the `PhantomData` types.
 ///
-/// Makes concrete implementations of `Machine` less verbose.
+/// Makes implementation in `Machine` less verbose.
 #[repr(C)]
 pub struct ChaChaNaked {
     pub row_b: Row,
     pub row_c: Row,
     pub row_d: Row,
-}
-
-/// Core trait which must be implemented for all supported architectures.
-pub trait Machine: Add<Output = Self> + Clone {
-    /// Creates a new `Machine` by broadcasting the provided `ChaChaNaked`
-    /// to `DEPTH` instances and incrementing the counters accordingly.
-    #[inline]
-    fn new<V: Variant>(state: &ChaChaNaked) -> Self {
-        match V::VAR {
-            Variants::Djb => Self::new_djb(state),
-            Variants::Ietf => Self::new_ietf(state),
-        }
-    }
-
-    /// Not to be used directly.
-    fn new_djb(state: &ChaChaNaked) -> Self;
-
-    /// Not to be used directly.
-    fn new_ietf(state: &ChaChaNaked) -> Self;
-
-    /// Increments the counter of each ChaCha instance in the current `Machine`.
-    #[inline]
-    fn increment<V: Variant>(&mut self) {
-        match V::VAR {
-            Variants::Djb => self.increment_djb(),
-            Variants::Ietf => self.increment_ietf(),
-        }
-    }
-
-    /// Not to be used directly.
-    fn increment_djb(&mut self);
-
-    /// Not to be used directly.
-    fn increment_ietf(&mut self);
-
-    /// Performs the standard ChaCha double round operation.
-    fn double_round(&mut self);
-
-    /// Converts the current `Machine` into raw bytes.
-    fn fetch_result(self, buf: &mut [u8; BUF_LEN_U8]);
-
-    /// Xors the current `Machine` raw bytes with `buf`.
-    #[inline]
-    fn xor_result(self, buf: &mut [u8; BUF_LEN_U8]) {
-        let mut tmp = [0; BUF_LEN_U8];
-        self.fetch_result(&mut tmp);
-        for i in 0..BUF_LEN_U8 {
-            buf[i] ^= tmp[i];
-        }
-    }
 }

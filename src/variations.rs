@@ -1,7 +1,3 @@
-/*!
-Module containing the variants of ChaCha (awfully descriptive, I know).
-*/
-
 pub enum Variants {
     /// Original variant proposed by the author of the salsa
     /// and chacha algorithms: Daniel J. Bernstein.

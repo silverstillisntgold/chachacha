@@ -1,162 +1,92 @@
-use crate::util::*;
+use super::soft::Soft;
+use super::{BUF_SIZE_U128, Vector, VectorOps};
+use crate::util::Row;
 #[cfg(target_arch = "x86")]
 use core::arch::x86::*;
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::*;
-use core::mem::transmute;
-use core::ops::Add;
+use core::ops::{Add, BitOr, BitXor};
 
-#[derive(Clone)]
-#[repr(C)]
-pub struct Matrix {
-    state: [[__m128i; ROWS]; DEPTH],
-}
+#[derive(Clone, Copy)]
+pub struct SSE2;
 
-impl Add for Matrix {
+impl Add for Vector<SSE2> {
     type Output = Self;
 
-    #[inline]
+    #[inline(always)]
     fn add(mut self, rhs: Self) -> Self::Output {
         unsafe {
-            for i in 0..self.state.len() {
-                for j in 0..self.state[i].len() {
-                    self.state[i][j] = _mm_add_epi32(self.state[i][j], rhs.state[i][j]);
-                }
+            for i in 0..BUF_SIZE_U128 {
+                self.u128x4[i] = _mm_add_epi32(self.u128x4[i], rhs.u128x4[i]);
             }
             self
         }
     }
 }
 
-macro_rules! rotate_left_epi32 {
-    ($value:expr, $LEFT_SHIFT:expr) => {{
-        const RIGHT_SHIFT: i32 = 32 - $LEFT_SHIFT;
-        let left_shift = _mm_slli_epi32($value, $LEFT_SHIFT);
-        let right_shift = _mm_srli_epi32($value, RIGHT_SHIFT);
-        _mm_or_si128(left_shift, right_shift)
-    }};
-}
+impl BitOr for Vector<SSE2> {
+    type Output = Self;
 
-impl Matrix {
-    #[inline]
-    fn quarter_round(&mut self) {
+    #[inline(always)]
+    fn bitor(mut self, rhs: Self) -> Self::Output {
         unsafe {
-            for [a, b, c, d] in self.state.iter_mut() {
-                *a = _mm_add_epi32(*a, *b);
-                *d = _mm_xor_si128(*d, *a);
-                *d = rotate_left_epi32!(*d, 16);
-
-                *c = _mm_add_epi32(*c, *d);
-                *b = _mm_xor_si128(*b, *c);
-                *b = rotate_left_epi32!(*b, 12);
-
-                *a = _mm_add_epi32(*a, *b);
-                *d = _mm_xor_si128(*d, *a);
-                *d = rotate_left_epi32!(*d, 8);
-
-                *c = _mm_add_epi32(*c, *d);
-                *b = _mm_xor_si128(*b, *c);
-                *b = rotate_left_epi32!(*b, 7);
+            for i in 0..BUF_SIZE_U128 {
+                self.u128x4[i] = _mm_or_si128(self.u128x4[i], rhs.u128x4[i]);
             }
-        }
-    }
-
-    #[inline]
-    fn make_diagonal(&mut self) {
-        unsafe {
-            for [a, _, c, d] in self.state.iter_mut() {
-                *a = _mm_shuffle_epi32(*a, 0b_10_01_00_11);
-                *c = _mm_shuffle_epi32(*c, 0b_00_11_10_01);
-                *d = _mm_shuffle_epi32(*d, 0b_01_00_11_10);
-            }
-        }
-    }
-
-    #[inline]
-    fn unmake_diagonal(&mut self) {
-        unsafe {
-            for [a, _, c, d] in self.state.iter_mut() {
-                *c = _mm_shuffle_epi32(*c, 0b_10_01_00_11);
-                *d = _mm_shuffle_epi32(*d, 0b_01_00_11_10);
-                *a = _mm_shuffle_epi32(*a, 0b_00_11_10_01);
-            }
+            self
         }
     }
 }
 
-impl Machine for Matrix {
-    #[inline]
-    fn new_djb(state: &ChaChaNaked) -> Self {
+impl BitXor for Vector<SSE2> {
+    type Output = Self;
+
+    #[inline(always)]
+    fn bitxor(mut self, rhs: Self) -> Self::Output {
         unsafe {
-            let mut result = Matrix {
-                state: [[
-                    transmute(ROW_A),
-                    transmute(state.row_b),
-                    transmute(state.row_c),
-                    transmute(state.row_d),
-                ]; DEPTH],
-            };
-            result.state[1][3] = _mm_add_epi64(result.state[1][3], _mm_set_epi64x(0, 1));
-            result.state[2][3] = _mm_add_epi64(result.state[2][3], _mm_set_epi64x(0, 2));
-            result.state[3][3] = _mm_add_epi64(result.state[3][3], _mm_set_epi64x(0, 3));
-            result
+            for i in 0..BUF_SIZE_U128 {
+                self.u128x4[i] = _mm_xor_si128(self.u128x4[i], rhs.u128x4[i]);
+            }
+            self
+        }
+    }
+}
+
+impl VectorOps for Vector<SSE2> {
+    #[inline(always)]
+    fn broadcast_row(value: Row) -> Self {
+        Vector::<Soft>::broadcast_row(value).cast()
+    }
+
+    #[inline(always)]
+    fn shift_left<const K: i32>(mut self) -> Self {
+        unsafe {
+            let count = _mm_set1_epi64x(K as i64);
+            for i in 0..BUF_SIZE_U128 {
+                self.u128x4[i] = _mm_sll_epi32(self.u128x4[i], count);
+            }
+            self
         }
     }
 
-    #[inline]
-    fn new_ietf(state: &ChaChaNaked) -> Self {
+    #[inline(always)]
+    fn shift_right<const K: i32>(mut self) -> Self {
         unsafe {
-            let mut result = Matrix {
-                state: [[
-                    transmute(ROW_A),
-                    transmute(state.row_b),
-                    transmute(state.row_c),
-                    transmute(state.row_d),
-                ]; DEPTH],
-            };
-            result.state[1][3] = _mm_add_epi32(result.state[1][3], _mm_set_epi32(0, 0, 0, 1));
-            result.state[2][3] = _mm_add_epi32(result.state[2][3], _mm_set_epi32(0, 0, 0, 2));
-            result.state[3][3] = _mm_add_epi32(result.state[3][3], _mm_set_epi32(0, 0, 0, 3));
-            result
+            let count = _mm_set1_epi64x(K as i64);
+            for i in 0..BUF_SIZE_U128 {
+                self.u128x4[i] = _mm_srl_epi32(self.u128x4[i], count);
+            }
+            self
         }
     }
 
-    #[inline]
-    fn increment_djb(&mut self) {
+    #[inline(always)]
+    fn shuffle_internal<const MASK: i32>(mut self) -> Self {
         unsafe {
-            let increment = _mm_set_epi64x(0, DEPTH as i64);
-            self.state[0][3] = _mm_add_epi64(self.state[0][3], increment);
-            self.state[1][3] = _mm_add_epi64(self.state[1][3], increment);
-            self.state[2][3] = _mm_add_epi64(self.state[2][3], increment);
-            self.state[3][3] = _mm_add_epi64(self.state[3][3], increment);
-        }
-    }
-
-    #[inline]
-    fn increment_ietf(&mut self) {
-        unsafe {
-            let increment = _mm_set_epi32(0, 0, 0, DEPTH as i32);
-            self.state[0][3] = _mm_add_epi32(self.state[0][3], increment);
-            self.state[1][3] = _mm_add_epi32(self.state[1][3], increment);
-            self.state[2][3] = _mm_add_epi32(self.state[2][3], increment);
-            self.state[3][3] = _mm_add_epi32(self.state[3][3], increment);
-        }
-    }
-
-    #[inline]
-    fn double_round(&mut self) {
-        // Column rounds
-        self.quarter_round();
-        // Diagonal rounds
-        self.make_diagonal();
-        self.quarter_round();
-        self.unmake_diagonal();
-    }
-
-    #[inline]
-    fn fetch_result(self, buf: &mut [u8; BUF_LEN_U8]) {
-        unsafe {
-            *buf = transmute(self);
+            for i in 0..BUF_SIZE_U128 {
+                self.u128x4[i] = _mm_shuffle_epi32::<MASK>(self.u128x4[i]);
+            }
+            self
         }
     }
 }

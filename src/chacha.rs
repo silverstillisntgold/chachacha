@@ -1,13 +1,9 @@
-/*!
-Module containing the [`ChaChaCore`] type, which as it's name suggests, is the core type used
-to abstract the ChaCha algorithm to the most powerful vectorization model available.
-*/
-
 // Pointless to zero memory we're going to immediately overwrite,
 // but rust complains about leaving it uninitialized because it can't
 // tell we're filling it before it's eventually used.
 #![allow(clippy::uninit_assumed_init, invalid_value)]
 
+use crate::backends::*;
 use crate::rounds::*;
 use crate::util::*;
 use crate::variations::*;
@@ -16,90 +12,23 @@ use core::mem::{MaybeUninit, transmute};
 use core::ptr::copy_nonoverlapping;
 
 #[repr(C)]
-pub struct ChaChaCore<M, R, V> {
+pub struct ChaChaCore<R, T, V> {
     row_b: Row,
     row_c: Row,
     row_d: Row,
-    _phantom: PhantomData<(M, R, V)>,
+    _phantom: PhantomData<(R, T, V)>,
 }
 
-impl<M, R, V> From<u8> for ChaChaCore<M, R, V> {
-    #[inline]
-    fn from(value: u8) -> Self {
-        [value; SEED_LEN_U8].into()
-    }
-}
-
-impl<M, R, V> From<u32> for ChaChaCore<M, R, V> {
-    #[inline]
-    fn from(value: u32) -> Self {
-        [value; SEED_LEN_U32].into()
-    }
-}
-
-impl<M, R, V> From<u64> for ChaChaCore<M, R, V> {
-    #[inline]
-    fn from(value: u64) -> Self {
-        [value; SEED_LEN_U64].into()
-    }
-}
-
-impl<M, R, V> From<[u8; SEED_LEN_U8]> for ChaChaCore<M, R, V> {
-    #[inline]
-    fn from(value: [u8; SEED_LEN_U8]) -> Self {
-        unsafe { transmute(value) }
-    }
-}
-
-impl<M, R, V> From<[u32; SEED_LEN_U32]> for ChaChaCore<M, R, V> {
-    #[inline]
-    fn from(value: [u32; SEED_LEN_U32]) -> Self {
-        unsafe { transmute(value) }
-    }
-}
-
-impl<M, R, V> From<[u64; SEED_LEN_U64]> for ChaChaCore<M, R, V> {
-    #[inline]
-    fn from(value: [u64; SEED_LEN_U64]) -> Self {
-        unsafe { transmute(value) }
-    }
-}
-
-impl<M, R, V> ChaChaCore<M, R, V>
-where
-    M: Machine,
-    R: DoubleRounds,
-    V: Variant,
-{
-    /// Creates a new `ChaChaCore` instace.
-    ///
-    /// The contents of `key` will always be moved into the new instance unmodifed,
-    /// but `counter` and `nonce` will be changed to fit the specification of the `Variant`
-    /// used.
-    ///
-    /// [`Djb`] will use all of `counter` and only the first two values in `nonce`.
-    ///
-    /// [`Ietf`] will truncate `counter` to a `u32` and use all values in `nonce`.
-    pub fn new(key: [u32; 8], counter: u64, nonce: [u32; 3]) -> Self {
+impl<R, T> ChaChaCore<R, T, Djb> {
+    pub fn new(key: [u32; 8], counter: u64, nonce: [u32; 2]) -> Self {
         let row_b = Row {
             u32x4: [key[0], key[1], key[2], key[3]],
         };
         let row_c = Row {
             u32x4: [key[4], key[5], key[6], key[7]],
         };
-        let row_d = match V::VAR {
-            Variants::Djb => {
-                let nonce = unsafe { transmute([nonce[0], nonce[1]]) };
-                Row {
-                    u64x2: [counter, nonce],
-                }
-            }
-            Variants::Ietf => {
-                let counter = counter as u32;
-                Row {
-                    u32x4: [counter, nonce[0], nonce[1], nonce[2]],
-                }
-            }
+        let row_d = Row {
+            u64x2: [counter, unsafe { transmute(nonce) }],
         };
         Self {
             row_b,
@@ -109,26 +38,54 @@ where
         }
     }
 
-    #[inline]
     pub fn get_counter(&self) -> u64 {
-        unsafe {
-            match V::VAR {
-                Variants::Djb => self.row_d.u64x2[0],
-                Variants::Ietf => self.row_d.u32x4[0] as u64,
-            }
-        }
+        unsafe { self.row_d.u64x2[0] }
     }
 
-    #[inline]
     pub fn set_counter(&mut self, new_counter: u64) {
         unsafe {
-            match V::VAR {
-                Variants::Djb => self.row_d.u64x2[0] = new_counter,
-                Variants::Ietf => self.row_d.u32x4[0] = new_counter as u32,
-            }
+            self.row_d.u64x2[0] = new_counter;
+        }
+    }
+}
+
+impl<R, T> ChaChaCore<R, T, Ietf> {
+    pub fn new(key: [u32; 8], counter: u32, nonce: [u32; 3]) -> Self {
+        let row_b = Row {
+            u32x4: [key[0], key[1], key[2], key[3]],
+        };
+        let row_c = Row {
+            u32x4: [key[4], key[5], key[6], key[7]],
+        };
+        let row_d = Row {
+            u32x4: [counter, nonce[0], nonce[1], nonce[2]],
+        };
+        Self {
+            row_b,
+            row_c,
+            row_d,
+            _phantom: PhantomData,
         }
     }
 
+    pub fn get_counter(&self) -> u32 {
+        unsafe { self.row_d.u32x4[0] }
+    }
+
+    pub fn set_counter(&mut self, new_counter: u32) {
+        unsafe {
+            self.row_d.u32x4[0] = new_counter;
+        }
+    }
+}
+
+impl<R, T, V> ChaChaCore<R, T, V>
+where
+    R: DoubleRounds,
+    T: Copy,
+    Vector<T>: VectorOps,
+    V: Variant,
+{
     /// Xors `dst` with bytes from the output of `self`.
     #[inline(never)]
     pub fn xor(&mut self, dst: &mut [u8]) {
@@ -143,7 +100,7 @@ where
 
     #[inline]
     fn slice<const XOR: bool>(&mut self, dst: &mut [u8]) {
-        let mut machine = M::new::<V>(self.get_naked());
+        let mut machine = Machine::<T>::new::<V>(self.get_naked());
         dst.chunks_exact_mut(BUF_LEN_U8).for_each(|chunk| {
             // FUCKING JUST GIVE US ARRAY WINDOWS OR SOMETHING DAMNIT.
             let buf: &mut [u8; BUF_LEN_U8] = chunk.try_into().unwrap();
@@ -221,15 +178,15 @@ where
 
     #[inline(never)]
     fn chacha_once<const XOR: bool>(&mut self, buf: &mut [u8; BUF_LEN_U8]) {
-        let mut machine = M::new::<V>(self.get_naked());
+        let mut machine = Machine::<T>::new::<V>(self.get_naked());
         self.chacha::<false, XOR>(&mut machine, buf);
         self.increment();
     }
 
-    #[inline]
+    #[inline(always)]
     fn chacha<const INCREMENT: bool, const XOR: bool>(
         &mut self,
-        machine: &mut M,
+        machine: &mut Machine<T>,
         buf: &mut [u8; BUF_LEN_U8],
     ) {
         let mut cur = machine.clone();
@@ -238,9 +195,9 @@ where
         }
         let result = cur + machine.clone();
         if XOR {
-            result.xor_result(buf);
+            result.xor_inner(buf);
         } else {
-            result.fetch_result(buf);
+            result.get_inner(buf);
         }
         if INCREMENT {
             machine.increment::<V>();
@@ -248,7 +205,7 @@ where
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn increment(&mut self) {
         unsafe {
             match V::VAR {
@@ -262,12 +219,68 @@ where
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn get_naked(&self) -> &ChaChaNaked {
         const {
             assert!(align_of::<Self>() == align_of::<ChaChaNaked>());
             assert!(size_of::<Self>() == size_of::<ChaChaNaked>());
         }
         unsafe { transmute(self) }
+    }
+}
+
+impl<R, T, V> From<u8> for ChaChaCore<R, T, V> {
+    #[inline]
+    fn from(value: u8) -> Self {
+        [value; SEED_LEN_U8].into()
+    }
+}
+
+impl<R, T, V> From<u16> for ChaChaCore<R, T, V> {
+    #[inline]
+    fn from(value: u16) -> Self {
+        [value; SEED_LEN_U16].into()
+    }
+}
+
+impl<R, T, V> From<u32> for ChaChaCore<R, T, V> {
+    #[inline]
+    fn from(value: u32) -> Self {
+        [value; SEED_LEN_U32].into()
+    }
+}
+
+impl<R, T, V> From<u64> for ChaChaCore<R, T, V> {
+    #[inline]
+    fn from(value: u64) -> Self {
+        [value; SEED_LEN_U64].into()
+    }
+}
+
+impl<R, T, V> From<[u8; SEED_LEN_U8]> for ChaChaCore<R, T, V> {
+    #[inline]
+    fn from(value: [u8; SEED_LEN_U8]) -> Self {
+        unsafe { transmute(value) }
+    }
+}
+
+impl<R, T, V> From<[u16; SEED_LEN_U16]> for ChaChaCore<R, T, V> {
+    #[inline]
+    fn from(value: [u16; SEED_LEN_U16]) -> Self {
+        unsafe { transmute(value) }
+    }
+}
+
+impl<R, T, V> From<[u32; SEED_LEN_U32]> for ChaChaCore<R, T, V> {
+    #[inline]
+    fn from(value: [u32; SEED_LEN_U32]) -> Self {
+        unsafe { transmute(value) }
+    }
+}
+
+impl<R, T, V> From<[u64; SEED_LEN_U64]> for ChaChaCore<R, T, V> {
+    #[inline]
+    fn from(value: [u64; SEED_LEN_U64]) -> Self {
+        unsafe { transmute(value) }
     }
 }
