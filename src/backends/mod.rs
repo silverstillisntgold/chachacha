@@ -48,6 +48,31 @@ const BUF_SIZE_U128: usize = BUF_SIZE_U64 / 2;
 #[cfg_attr(not(target_feature = "avx2"), allow(unused))]
 const BUF_SIZE_U256: usize = BUF_SIZE_U128 / 2;
 
+// #[allow(unused)]
+// #[derive(Clone, Copy)]
+// #[repr(C, align(64))]
+// pub union InternalV2 {
+//     // Integer representations.
+//     u8x64: [[u8; BUF_SIZE_U8]; 4],
+//     u16x32: [[u16; BUF_SIZE_U16]; 4],
+//     u32x16: [[u32; BUF_SIZE_U32]; 4],
+//     u64x8: [[u64; BUF_SIZE_U64]; 4],
+//     // `Row` is a union of integers.
+//     rowx4: [[Row; BUF_SIZE_U128]; 4],
+
+//     // X86 representations.
+//     #[cfg(target_feature = "sse2")]
+//     u128x4: [[__m128i; BUF_SIZE_U128]; 4],
+//     #[cfg(target_feature = "avx2")]
+//     u256x2: [[__m256i; BUF_SIZE_U256]; 4],
+//     #[cfg(target_feature = "avx512f")]
+//     u512x1: [__m512i; 4],
+
+//     // Neon representation.
+//     #[cfg(target_feature = "neon")]
+//     u128x4: [[uint32x4_t; BUF_SIZE_U128]; 4],
+// }
+
 #[derive(Clone, Copy)]
 #[repr(C, align(64))]
 pub union Internal {
@@ -59,7 +84,7 @@ pub union Internal {
     // `Row` is a union of integers.
     rowx4: [Row; BUF_SIZE_U128],
 
-    // X86 representations.
+    // x86 representations.
     #[cfg(target_feature = "sse2")]
     u128x4: [__m128i; BUF_SIZE_U128],
     #[cfg(target_feature = "avx2")]
@@ -294,10 +319,10 @@ where
         self.row_a = self.row_a.shuffle::<0b_00_11_10_01>();
     }
 
-    #[inline(always)]
+    #[inline(never)]
     fn reorder(self) -> Self {
-        let tmp: [[Row; BUF_SIZE_U128]; BUF_SIZE_U128] = unsafe { transmute(self) };
         unsafe {
+            let tmp: [[Row; BUF_SIZE_U128]; BUF_SIZE_U128] = transmute(self);
             transmute([
                 [tmp[0][0], tmp[1][0], tmp[2][0], tmp[3][0]], // lane 1 (counter + 0)
                 [tmp[0][1], tmp[1][1], tmp[2][1], tmp[3][1]], // lane 2 (counter + 1)

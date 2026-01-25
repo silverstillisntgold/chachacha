@@ -65,9 +65,9 @@ impl VectorOps for Vector<AVX2> {
     #[inline(always)]
     fn shift_left<const K: i32>(mut self) -> Self {
         unsafe {
-            let count = _mm_set1_epi64x(K as i64);
+            //let count = _mm_set1_epi64x(K as i64);
             for i in 0..BUF_SIZE_U256 {
-                self.u256x2[i] = _mm256_sll_epi32(self.u256x2[i], count);
+                self.u256x2[i] = _mm256_slli_epi32::<K>(self.u256x2[i]);
             }
             self
         }
@@ -77,7 +77,7 @@ impl VectorOps for Vector<AVX2> {
     fn shift_right<const K: i32>(mut self) -> Self {
         unsafe {
             let count = _mm_set1_epi64x(K as i64);
-            for i in 0..BUF_SIZE_U256 {
+            for i in 0..self.u256x2.len() {
                 self.u256x2[i] = _mm256_srl_epi32(self.u256x2[i], count);
             }
             self

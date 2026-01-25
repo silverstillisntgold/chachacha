@@ -15,7 +15,8 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 cfg-if = "1"
-chacha20 = "0.10.0-rc.5"
+chacha20 = { version = "0.10.0-rc.9", features = ["legacy"] }
+chacha = { git = "https://github.com/skerkour/chacha20-blake3", branch = "main" }
 
 [dev-dependencies]
 getrandom = "0.3.4"
