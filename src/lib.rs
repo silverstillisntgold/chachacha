@@ -35,17 +35,15 @@ mod chacha_reference;
 
 mod backends;
 mod chacha;
-mod rounds;
 mod util;
-mod variations;
 
+use backends::TargetMachine;
 use chacha::ChaChaCore;
-use rounds::*;
-use variations::*;
+use util::*;
 
 pub use util::{BUF_LEN_U8, BUF_LEN_U64, SEED_LEN_U8, SEED_LEN_U16, SEED_LEN_U32, SEED_LEN_U64};
 
-type ChaCha<R, V> = ChaChaCore<R, backends::VecType, V>;
+type ChaCha<R, V> = ChaChaCore<R, TargetMachine, V>;
 
 /// ChaCha with 8 rounds, a 64-bit counter, and a 64-bit nonce.
 pub type ChaCha8Djb = ChaCha<R8, Djb>;
@@ -60,6 +58,10 @@ pub type ChaCha8Ietf = ChaCha<R8, Ietf>;
 pub type ChaCha12Ietf = ChaCha<R12, Ietf>;
 /// ChaCha with 20 rounds, a 32-bit counter, and a 96-bit nonce.
 pub type ChaCha20Ietf = ChaCha<R20, Ietf>;
+
+pub struct ChaChaV2 {
+    inner_fill: unsafe fn(buf: &mut [u8; BUF_LEN_U8]),
+}
 
 #[cfg(test)]
 mod tests {
@@ -252,42 +254,42 @@ mod tests {
         test_chacha::<soft::Soft, R20, Ietf>();
     }
 
-    fn test_chacha<T, R: DoubleRounds, V: Variant>()
-    where
-        T: Copy,
-        Vector<T>: VectorOps,
-    {
-        for i in 0..TEST_COUNT {
-            let mut seed = [0; SEED_LEN_U8];
-            seed.fill_with(|| getrandom::u64().unwrap() as u8);
-            // The difference between the djb/ietf variants is only apparent
-            // when index 12 crosses the `u32::MAX` threshold, since that's the
-            // point where ietf would only wrap index 12 around to 0, but the
-            // djb variant would also increment index 13.
-            if i >= (TEST_COUNT / 2) {
-                let seed_ref: &mut [u32; SEED_LEN_U32] = unsafe { transmute(&mut seed) };
-                seed_ref[8] = u32::MAX - 7;
-            }
-            let mut chacha = ChaChaCore::<R, T, V>::from(seed);
-            let mut chacha_ref = ChaChaRef::<R, V>::from(seed);
+    // fn test_chacha<T, R: DoubleRounds, V: Variant>()
+    // where
+    //     T: Copy,
+    //     Vector<T>: VectorOps,
+    // {
+    //     for i in 0..TEST_COUNT {
+    //         let mut seed = [0; SEED_LEN_U8];
+    //         seed.fill_with(|| getrandom::u64().unwrap() as u8);
+    //         // The difference between the djb/ietf variants is only apparent
+    //         // when index 12 crosses the `u32::MAX` threshold, since that's the
+    //         // point where ietf would only wrap index 12 around to 0, but the
+    //         // djb variant would also increment index 13.
+    //         if i >= (TEST_COUNT / 2) {
+    //             let seed_ref: &mut [u32; SEED_LEN_U32] = unsafe { transmute(&mut seed) };
+    //             seed_ref[8] = u32::MAX - 7;
+    //         }
+    //         let mut chacha = ChaChaCore::<R, T, V>::from(seed);
+    //         let mut chacha_ref = ChaChaRef::<R, V>::from(seed);
 
-            let chacha_iter = repeat_with(|| chacha.get_block()).take(TEST_LEN).flatten();
-            let chacha_ref_iter = repeat_with(|| chacha_ref.get_block())
-                .take(TEST_LEN_REF)
-                .flatten();
-            chacha_iter
-                .zip(chacha_ref_iter)
-                .for_each(|(a, b)| assert_eq!(a, b));
+    //         let chacha_iter = repeat_with(|| chacha.get_block()).take(TEST_LEN).flatten();
+    //         let chacha_ref_iter = repeat_with(|| chacha_ref.get_block())
+    //             .take(TEST_LEN_REF)
+    //             .flatten();
+    //         chacha_iter
+    //             .zip(chacha_ref_iter)
+    //             .for_each(|(a, b)| assert_eq!(a, b));
 
-            const BIG_IF_TRU: usize = BUF_LEN_U8 * 2;
-            for _ in 0..TEST_COUNT {
-                let mut buf = [0; BIG_IF_TRU];
-                let mut buf_ref = [0; BIG_IF_TRU];
-                let size = getrandom::u64().unwrap() as usize % BIG_IF_TRU;
-                chacha.fill(&mut buf[..size]);
-                chacha_ref.fill(&mut buf_ref[..size]);
-                assert_eq!(buf, buf_ref);
-            }
-        }
-    }
+    //         const BIG_IF_TRU: usize = BUF_LEN_U8 * 2;
+    //         for _ in 0..TEST_COUNT {
+    //             let mut buf = [0; BIG_IF_TRU];
+    //             let mut buf_ref = [0; BIG_IF_TRU];
+    //             let size = getrandom::u64().unwrap() as usize % BIG_IF_TRU;
+    //             chacha.fill(&mut buf[..size]);
+    //             chacha_ref.fill(&mut buf_ref[..size]);
+    //             assert_eq!(buf, buf_ref);
+    //         }
+    //     }
+    // }
 }

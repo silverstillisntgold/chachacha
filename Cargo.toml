@@ -1,6 +1,6 @@
 [package]
 name = "chachacha"
-version = "0.4.2"
+version = "0.5.0"
 edition = "2024"
 description = "SIMD optimized implementations of the Chacha stream cipher"
 documentation = "https://docs.rs/chachacha"
@@ -8,15 +8,10 @@ repository = "https://github.com/silverstillisntgold/chachacha"
 categories = ["algorithms", "cryptography", "no-std"]
 keywords = ["chacha", "cipher", "simd"]
 license = "MIT"
-rust-version = "1.89"
+rust-version = "1.95"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
-[dependencies]
-cfg-if = "1"
-chacha20 = { version = "0.10.0-rc.9", features = ["legacy"] }
-chacha = { git = "https://github.com/skerkour/chacha20-blake3", branch = "main" }
-
 [dev-dependencies]
-getrandom = "0.3.4"
+getrandom = "0.4.2"

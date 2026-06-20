@@ -9,9 +9,7 @@ all of these tests means we would also pass the equivalent [`Ietf`] variant test
 [here]: https://github.com/secworks/chacha_testvectors/blob/master/src/chacha_testvectors.txt
 */
 
-use crate::rounds::*;
 use crate::util::*;
-use crate::variations::*;
 use core::iter::repeat_with;
 use core::marker::PhantomData;
 use core::mem::transmute;
@@ -26,7 +24,7 @@ pub struct ChaCha<R, V> {
     row_b: Row,
     row_c: Row,
     row_d: Row,
-    _phantom: PhantomData<(R, V)>,
+    _pd: PhantomData<(R, V)>,
 }
 
 impl<R, V> Add for ChaCha<R, V> {
@@ -49,7 +47,7 @@ impl<R, V> Clone for ChaCha<R, V> {
             row_b: self.row_b,
             row_c: self.row_c,
             row_d: self.row_d,
-            _phantom: PhantomData,
+            _pd: PhantomData,
         }
     }
 }
@@ -74,7 +72,7 @@ impl<R, V> From<[u8; SEED_LEN_U8]> for ChaCha<R, V> {
             row_b: rows[0],
             row_c: rows[1],
             row_d: rows[2],
-            _phantom: PhantomData,
+            _pd: PhantomData,
         }
     }
 }
@@ -117,7 +115,7 @@ impl<R: DoubleRounds, V: Variant> ChaCha<R, V> {
 
     pub fn fill(&mut self, dst: &mut [u8]) {
         let src = repeat_with(|| self.get_block()).flatten();
-        dst.iter_mut().zip(src).for_each(|(dst_val, src_val)| {
+        dst.iter_mut().zip(src).for_each(|(mut dst_val, src_val)| {
             *dst_val = src_val;
         });
     }
