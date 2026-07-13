@@ -1,1 +1,1 @@
-pub struct Machine;
+pub struct Avx512;

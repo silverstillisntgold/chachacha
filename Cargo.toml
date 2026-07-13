@@ -14,4 +14,7 @@ rust-version = "1.95"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dev-dependencies]
-getrandom = "0.4.2"
+getrandom = "0.4.3"
+
+[features]
+_internal = [] # Exposes custom round counts.

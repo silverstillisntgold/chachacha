@@ -1,6 +1,4 @@
-/*!
-TODO: Module docs.
-*/
+#![allow(unused)]
 
 #[cfg(target_feature = "avx2")]
 pub mod avx2;
@@ -15,18 +13,18 @@ pub mod sse2;
 // Choose the widest available machine as the default.
 cfg_select! {
     target_feature = "avx512f" => {
-        pub use avx512::Machine as TargetMachine;
+        pub use avx512::Avx512 as TargetMachine;
     }
     target_feature = "avx2" => {
-        pub use avx2::Machine as TargetMachine;
+        pub use avx2::Avx2 as TargetMachine;
     }
     target_feature = "sse2" => {
-        pub use sse2::Machine as TargetMachine;
+        pub use sse2::Sse2 as TargetMachine;
     }
     target_feature = "neon" => {
-        pub use neon::Machine as TargetMachine;
+        pub use neon::Neon as TargetMachine;
     }
     _ => {
-        pub use soft::Machine as TargetMachine;
+        pub use soft::Soft as TargetMachine;
     }
 }

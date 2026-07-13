@@ -1,6 +1,6 @@
 # ChaChaCha: ChaCha with a little extra Cha
 
-Extremely fast ChaCha implementation. Primarily made for use as a CRNG in the [`ya-rand`] crate,
+Extremely fast ChaCha primitive. Primarily made for use as a CRNG in the [`ya-rand`] crate,
 but should be just as usable anywhere else you might want to use ChaCha.
 
 ## Examples
