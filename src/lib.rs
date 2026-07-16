@@ -24,17 +24,18 @@ assert!(!all_zeros);
 [`ya-rand`]: https://crates.io/crates/ya-rand
 */
 
+#![allow(clippy::needless_range_loop, clippy::too_many_arguments)]
 //#![deny(missing_docs)]
 #![no_std]
-
-mod backends;
-mod chacha;
-mod util;
 
 // The reference implementation is only used for testing the vectorized implementations
 // to ensure they're correct; don't bother compiling it when not testing.
 #[cfg(test)]
 mod chacha_reference;
+
+mod backends;
+mod chacha;
+mod util;
 
 mod internal {
     use crate::backends::TargetMachine;
@@ -279,7 +280,13 @@ mod tests {
             let mut chacha = ChaChaCore::<B, ROUNDS, V>::from_bytes(seed);
             let mut chacha_ref = ChaChaRef::<ROUNDS, V>::from(seed);
 
-            let chacha_iter = repeat_with(|| chacha.get_block()).take(TEST_LEN).flatten();
+            let chacha_iter = repeat_with(|| {
+                let mut buffer = [0; 256];
+                chacha.fill(&mut buffer);
+                buffer
+            })
+            .take(TEST_LEN)
+            .flatten();
             let chacha_ref_iter = repeat_with(|| chacha_ref.get_block())
                 .take(TEST_LEN_REF)
                 .flatten();

@@ -68,20 +68,35 @@ where
         unsafe { transmute(bytes) }
     }
 
+    /// Xors the entirety of `buffer` with output from `self`.
     #[inline(never)]
     pub fn apply_keystream(&mut self, buffer: &mut [u8]) {
+        const {
+            assert!(ROUNDS > 0 && ROUNDS.is_multiple_of(2));
+        }
         B::process::<ROUNDS, V, true>(self, buffer);
     }
 
+    /// Fills the entirety of `buffer` with output from `self`.
     #[inline(never)]
     pub fn fill(&mut self, buffer: &mut [u8]) {
+        const {
+            assert!(ROUNDS > 0 && ROUNDS.is_multiple_of(2));
+        }
         B::process::<ROUNDS, V, false>(self, buffer);
     }
 
     #[inline]
-    pub fn get_block(&mut self) -> [u8; 256] {
-        let mut buf = [0; 256];
-        self.fill(&mut buf);
-        buf
+    pub(crate) fn advance_blocks(&mut self, blocks: usize) {
+        unsafe {
+            match V::VAR {
+                Variants::Djb => {
+                    self.row_d.u64x2[0] = self.row_d.u64x2[0].wrapping_add(blocks as u64);
+                }
+                Variants::Ietf => {
+                    self.row_d.u32x4[0] = self.row_d.u32x4[0].wrapping_add(blocks as u32);
+                }
+            }
+        }
     }
 }

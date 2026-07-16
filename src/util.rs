@@ -1,15 +1,23 @@
-use crate::chacha::ChaChaCore;
 #[cfg(target_arch = "x86")]
 use core::arch::x86::__m128i;
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::__m128i;
 
+use crate::chacha::ChaChaCore;
+
 /// Columns in a reference ChaCha matrix.
-const COLUMNS: usize = 4;
+pub const COLUMNS: usize = 4;
 /// Rows in a reference ChaCha matrix.
-const ROWS: usize = 4;
+pub const ROWS: usize = 4;
+/// Size (in 32-bit ints) of a reference ChaCha matrix.
+pub const SIZE: usize = COLUMNS * ROWS;
 /// Size (in bytes) of a reference ChaCha matrix.
-pub const MATRIX_SIZE: usize = COLUMNS * ROWS * size_of::<u32>();
+pub const MATRIX_SIZE: usize = SIZE * size_of::<u32>();
+
+/// The amount of ChaCha instances processed in parallel.
+pub const BLOCKS: usize = 4;
+/// The amount of bytes generated in parallel.
+pub const BATCH_BYTES: usize = BLOCKS * MATRIX_SIZE;
 
 /// Standard constant used in all ChaCha implementations.
 pub const ROW_A: Row = Row {
@@ -17,9 +25,7 @@ pub const ROW_A: Row = Row {
 };
 
 pub trait Backend: Sized {
-    const BATCH_BYTES: usize = Self::BLOCKS * MATRIX_SIZE;
-    const BLOCKS: usize;
-
+    /// ChaCha real smooth (type shit).
     fn process<const ROUNDS: usize, V: Variant, const XOR: bool>(
         core: &mut ChaChaCore<Self, ROUNDS, V>,
         buffer: &mut [u8],
@@ -31,8 +37,8 @@ pub trait Backend: Sized {
 /// `u64x2` is useful for working with a 64-bit counter and `u8x16`
 /// is useful for some tests. `u16x8` is included for completeness.
 ///
-/// The size and aligment of this struct are both 16 bytes so that
-/// we can use aligned loads in the vectorized backends.
+/// The size and aligment of this struct are both 16 bytes to enable
+/// the compiler to generate aligned operations wherever possible.
 #[repr(C, align(16))]
 pub union Row {
     pub u8x16: [u8; 16],
@@ -47,7 +53,7 @@ pub union Row {
 impl Clone for Row {
     #[inline]
     fn clone(&self) -> Self {
-        unsafe { Self { u8x16: self.u8x16 } }
+        unsafe { Self { u16x8: self.u16x8 } }
     }
 }
 

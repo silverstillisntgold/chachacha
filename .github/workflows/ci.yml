@@ -20,6 +20,8 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
       - name: Update dependencies
         run: cargo update
+      - name: Run Clippy (warnings as errors)
+        run: cargo clippy -D warnings
       - name: Build tests
         run: cargo test --no-run
       - name: Run tests

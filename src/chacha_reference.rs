@@ -15,8 +15,8 @@ use core::marker::PhantomData;
 use core::mem::transmute;
 use core::ops::Add;
 
-type ChaChaMatrix = [u32; 16];
-type ChaChaResult = [u8; 16 * 4];
+type ChaChaMatrix = [u32; SIZE];
+type ChaChaResult = [u8; SIZE * size_of::<u32>()];
 
 #[repr(C)]
 pub struct ChaCha<const ROUNDS: usize, V> {
