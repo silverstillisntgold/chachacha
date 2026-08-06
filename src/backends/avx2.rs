@@ -20,11 +20,11 @@ pub struct Avx2;
 
 impl Backend for Avx2 {
     #[inline]
-    fn process<const ROUNDS: usize, V: Variant, const XOR: bool>(
+    fn process_internal<const ROUNDS: usize, V: Variant, const XOR: bool>(
         core: &mut ChaChaCore<Self, ROUNDS, V>,
         buffer: &mut [u8],
     ) {
-        let (batches, remainder) = buffer.as_chunks_mut::<{ BATCH_BYTES }>();
+        let (batches, remainder) = buffer.as_chunks_mut::<BATCH_BYTES>();
         let batches_len = batches.len();
 
         unsafe {
@@ -50,7 +50,6 @@ impl Backend for Avx2 {
 
             for dst in batches {
                 let keystream = generate_batch::<ROUNDS>(row_a, row_b, row_c, d0, d1);
-                store_or_xor::<XOR>(dst, keystream);
                 match V::VAR {
                     Variants::Djb => {
                         let increment = _mm256_setr_epi64x(BLOCKS as i64, 0, BLOCKS as i64, 0);
@@ -64,6 +63,7 @@ impl Backend for Avx2 {
                         d1 = _mm256_add_epi32(d1, increment);
                     }
                 }
+                store_or_xor::<XOR>(dst, keystream);
             }
 
             if !remainder.is_empty() {

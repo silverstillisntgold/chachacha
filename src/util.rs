@@ -26,7 +26,20 @@ pub const ROW_A: Row = Row {
 
 pub trait Backend: Sized {
     /// ChaCha real smooth (type shit).
+    #[inline]
     fn process<const ROUNDS: usize, V: Variant, const XOR: bool>(
+        core: &mut ChaChaCore<Self, ROUNDS, V>,
+        buffer: &mut [u8],
+    ) {
+        const {
+            assert!(ROUNDS > 0);
+            assert!(ROUNDS.is_multiple_of(2));
+        }
+        Self::process_internal::<ROUNDS, V, XOR>(core, buffer);
+    }
+
+    /// ChaCha but fr this time.
+    fn process_internal<const ROUNDS: usize, V: Variant, const XOR: bool>(
         core: &mut ChaChaCore<Self, ROUNDS, V>,
         buffer: &mut [u8],
     );
@@ -45,7 +58,7 @@ pub union Row {
     pub u16x8: [u16; 8],
     pub u32x4: [u32; 4],
     pub u64x2: [u64; 2],
-    // Useful in the avx2 and avx512 backends.
+    // Useful in the x86 backends.
     #[cfg(target_feature = "sse2")]
     pub u128x1: __m128i,
 }

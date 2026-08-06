@@ -71,18 +71,12 @@ where
     /// Xors the entirety of `buffer` with output from `self`.
     #[inline(never)]
     pub fn apply_keystream(&mut self, buffer: &mut [u8]) {
-        const {
-            assert!(ROUNDS > 0 && ROUNDS.is_multiple_of(2));
-        }
         B::process::<ROUNDS, V, true>(self, buffer);
     }
 
     /// Fills the entirety of `buffer` with output from `self`.
     #[inline(never)]
     pub fn fill(&mut self, buffer: &mut [u8]) {
-        const {
-            assert!(ROUNDS > 0 && ROUNDS.is_multiple_of(2));
-        }
         B::process::<ROUNDS, V, false>(self, buffer);
     }
 

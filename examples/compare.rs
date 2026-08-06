@@ -1,12 +1,12 @@
 use rand::{Rng, SeedableRng};
 use std::time::Instant;
 
-const SIZE: usize = 7 * (1 << 30);
+const SIZE: usize = 12 * (1 << 30) + 7;
 
 fn main() {
     let mut buf = [0; 48];
     getrandom::fill(&mut buf).unwrap();
-    let mut buffer = vec![69_u8; SIZE];
+    let mut buffer = vec![u8::MAX; SIZE];
 
     let mut c1 = chachacha::ChaCha8Djb::from_bytes(buf);
     let start = Instant::now();
