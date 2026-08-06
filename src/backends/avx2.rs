@@ -31,7 +31,7 @@ impl Backend for Avx2 {
             let row_a = _mm256_broadcastsi128_si256(ROW_A.u128x1);
             let row_b = _mm256_broadcastsi128_si256(core.row_b.u128x1);
             let row_c = _mm256_broadcastsi128_si256(core.row_c.u128x1);
-            let (mut d0, mut d1) = {
+            let (mut row_d0, mut row_d1) = {
                 // Placed within this scope to make it obvious this is the only place it's used.
                 let row_d = _mm256_broadcastsi128_si256(core.row_d.u128x1);
                 match V::VAR {
@@ -49,25 +49,25 @@ impl Backend for Avx2 {
             };
 
             for dst in batches {
-                let keystream = generate_batch::<ROUNDS>(row_a, row_b, row_c, d0, d1);
+                let keystream = generate_batch::<ROUNDS>(row_a, row_b, row_c, row_d0, row_d1);
                 match V::VAR {
                     Variants::Djb => {
                         let increment = _mm256_setr_epi64x(BLOCKS as i64, 0, BLOCKS as i64, 0);
-                        d0 = _mm256_add_epi64(d0, increment);
-                        d1 = _mm256_add_epi64(d1, increment);
+                        row_d0 = _mm256_add_epi64(row_d0, increment);
+                        row_d1 = _mm256_add_epi64(row_d1, increment);
                     }
                     Variants::Ietf => {
                         let increment =
                             _mm256_setr_epi32(BLOCKS as i32, 0, 0, 0, BLOCKS as i32, 0, 0, 0);
-                        d0 = _mm256_add_epi32(d0, increment);
-                        d1 = _mm256_add_epi32(d1, increment);
+                        row_d0 = _mm256_add_epi32(row_d0, increment);
+                        row_d1 = _mm256_add_epi32(row_d1, increment);
                     }
                 }
                 store_or_xor::<XOR>(dst, keystream);
             }
 
             if !remainder.is_empty() {
-                process_tail::<ROUNDS, XOR>(row_a, row_b, row_c, d0, d1, remainder);
+                process_tail::<ROUNDS, XOR>(row_a, row_b, row_c, row_d0, row_d1, remainder);
             }
         }
 
@@ -83,11 +83,11 @@ fn process_tail<const ROUNDS: usize, const XOR: bool>(
     row_a: __m256i,
     row_b: __m256i,
     row_c: __m256i,
-    d0: __m256i,
-    d1: __m256i,
+    row_d0: __m256i,
+    row_d1: __m256i,
     remainder: &mut [u8],
 ) {
-    let keystream = generate_batch::<ROUNDS>(row_a, row_b, row_c, d0, d1);
+    let keystream = generate_batch::<ROUNDS>(row_a, row_b, row_c, row_d0, row_d1);
     let mut tail = [0; BATCH_BYTES];
     store_or_xor::<false>(&mut tail, keystream);
     for (destination, keystream) in remainder.iter_mut().zip(tail) {
@@ -100,22 +100,41 @@ fn process_tail<const ROUNDS: usize, const XOR: bool>(
 }
 
 #[inline]
+fn store_or_xor<const XOR: bool>(dst: &mut [u8; BATCH_BYTES], keystream: [__m256i; 8]) {
+    unsafe {
+        const CHUNK_SIZE: usize = size_of::<__m256i>();
+        let (chunks, remainder) = dst.as_chunks_mut::<CHUNK_SIZE>();
+        debug_assert!(remainder.is_empty(), "there should be no remainder");
+        for (chunk, stream) in chunks.iter_mut().zip(keystream) {
+            let ptr = chunk.as_mut_ptr().cast::<__m256i>();
+            let output = if XOR {
+                let input = _mm256_loadu_si256(ptr.cast_const());
+                _mm256_xor_si256(input, stream)
+            } else {
+                stream
+            };
+            _mm256_storeu_si256(ptr, output);
+        }
+    }
+}
+
+#[inline]
 fn generate_batch<const ROUNDS: usize>(
     row_a: __m256i,
     row_b: __m256i,
     row_c: __m256i,
-    base_d0: __m256i,
-    base_d1: __m256i,
+    row_d0: __m256i,
+    row_d1: __m256i,
 ) -> [__m256i; 8] {
     unsafe {
         let mut a0 = row_a;
         let mut b0 = row_b;
         let mut c0 = row_c;
-        let mut d0 = base_d0;
+        let mut d0 = row_d0;
         let mut a1 = row_a;
         let mut b1 = row_b;
         let mut c1 = row_c;
-        let mut d1 = base_d1;
+        let mut d1 = row_d1;
 
         double_rounds::<ROUNDS>(
             &mut a0, &mut b0, &mut c0, &mut d0, &mut a1, &mut b1, &mut c1, &mut d1,
@@ -124,11 +143,11 @@ fn generate_batch<const ROUNDS: usize>(
         a0 = _mm256_add_epi32(a0, row_a);
         b0 = _mm256_add_epi32(b0, row_b);
         c0 = _mm256_add_epi32(c0, row_c);
-        d0 = _mm256_add_epi32(d0, base_d0);
+        d0 = _mm256_add_epi32(d0, row_d0);
         a1 = _mm256_add_epi32(a1, row_a);
         b1 = _mm256_add_epi32(b1, row_b);
         c1 = _mm256_add_epi32(c1, row_c);
-        d1 = _mm256_add_epi32(d1, base_d1);
+        d1 = _mm256_add_epi32(d1, row_d1);
 
         permute_blocks(a0, b0, c0, d0, a1, b1, c1, d1)
     }
@@ -156,25 +175,6 @@ fn permute_blocks(
             _mm256_permute2x128_si256::<0x31>(a1, b1),
             _mm256_permute2x128_si256::<0x31>(c1, d1),
         ]
-    }
-}
-
-#[inline]
-fn store_or_xor<const XOR: bool>(dst: &mut [u8; BATCH_BYTES], keystream: [__m256i; 8]) {
-    unsafe {
-        const CHUNK_SIZE: usize = size_of::<__m256i>();
-        let (chunks, remainder) = dst.as_chunks_mut::<CHUNK_SIZE>();
-        debug_assert!(remainder.is_empty(), "there should be no remainder");
-        for (chunk, stream) in chunks.iter_mut().zip(keystream) {
-            let ptr = chunk.as_mut_ptr().cast::<__m256i>();
-            let output = if XOR {
-                let input = _mm256_loadu_si256(ptr.cast_const());
-                _mm256_xor_si256(input, stream)
-            } else {
-                stream
-            };
-            _mm256_storeu_si256(ptr, output);
-        }
     }
 }
 
