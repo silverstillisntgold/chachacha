@@ -4,6 +4,7 @@ use core::arch::x86 as arch;
 use core::arch::x86_64 as arch;
 
 use crate::{
+    backends::soft::Soft,
     chacha::ChaChaCore,
     util::{BATCH_BYTES, BLOCKS, Backend, MATRIX_SIZE, ROW_A, Variant, Variants},
 };
@@ -13,16 +14,26 @@ use arch::{
     _mm_xor_si128,
 };
 
-const STREAM_VECTORS: usize = BATCH_BYTES / size_of::<__m128i>();
-
-pub struct Sse2;
+pub struct Sse2 {
+    // row_a: Vector,
+    // row_b: Vector,
+    // row_c: Vector,
+    // row_d0: Vector,
+    // row_d1: Vector,
+    inner: super::avx2::Avx2,
+}
 
 impl Backend for Sse2 {
-    #[inline]
-    fn process_internal<const ROUNDS: usize, V: Variant, const XOR: bool>(
-        core: &mut ChaChaCore<Self, ROUNDS, V>,
-        buffer: &mut [u8],
+    fn new<B: Backend, const ROUNDS: usize, V: Variant>(core: &ChaChaCore<B, ROUNDS, V>) -> Self {
+        Self {
+            inner: super::avx2::Avx2::new(core),
+        }
+    }
+
+    fn fill<B: Backend, const ROUNDS: usize, V: Variant>(
+        &mut self,
+        buffer: &mut [u8; BATCH_BYTES],
     ) {
-        todo!()
+        self.inner.fill::<super::avx2::Avx2, ROUNDS, V>(buffer);
     }
 }

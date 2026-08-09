@@ -1,9 +1,8 @@
+use crate::chacha::ChaChaCore;
 #[cfg(target_arch = "x86")]
 use core::arch::x86::__m128i;
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::__m128i;
-
-use crate::chacha::ChaChaCore;
 
 /// Columns in a reference ChaCha matrix.
 pub const COLUMNS: usize = 4;
@@ -24,25 +23,17 @@ pub const ROW_A: Row = Row {
     u8x16: *b"expand 32-byte k",
 };
 
+/// Trait which represents an implementation for a specific hardware architecture.
 pub trait Backend: Sized {
-    /// ChaCha real smooth (type shit).
-    #[inline]
-    fn process<const ROUNDS: usize, V: Variant, const XOR: bool>(
-        core: &mut ChaChaCore<Self, ROUNDS, V>,
-        buffer: &mut [u8],
-    ) {
-        const {
-            assert!(ROUNDS > 0);
-            assert!(ROUNDS.is_multiple_of(2));
-        }
-        Self::process_internal::<ROUNDS, V, XOR>(core, buffer);
-    }
+    /// Creates a new instance of [`Self`], which is used for holding
+    /// initial state and tracking the running counter.
+    fn new<B: Backend, const ROUNDS: usize, V: Variant>(core: &ChaChaCore<B, ROUNDS, V>) -> Self;
 
-    /// ChaCha but fr this time.
-    fn process_internal<const ROUNDS: usize, V: Variant, const XOR: bool>(
-        core: &mut ChaChaCore<Self, ROUNDS, V>,
-        buffer: &mut [u8],
-    );
+    /// Fills `buffer` with the output stream of `self`.
+    ///
+    /// TODO: When rust gets full const-generics it might be benefical to
+    /// specialize the length of `buffer` to better optimize specific backends.
+    fn fill<B: Backend, const ROUNDS: usize, V: Variant>(&mut self, buffer: &mut [u8; BATCH_BYTES]);
 }
 
 /// Wrapper for the raw data of a ChaCha row. In a reference
@@ -58,7 +49,7 @@ pub union Row {
     pub u16x8: [u16; 8],
     pub u32x4: [u32; 4],
     pub u64x2: [u64; 2],
-    // Useful in the x86 backends.
+    // Useful in x86 backends.
     #[cfg(target_feature = "sse2")]
     pub u128x1: __m128i,
 }

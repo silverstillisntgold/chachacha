@@ -16,13 +16,3 @@ use arch::{
 const STREAM_VECTORS: usize = BATCH_BYTES / size_of::<__m512i>();
 
 pub struct Avx512;
-
-impl Backend for Avx512 {
-    #[inline]
-    fn process_internal<const ROUNDS: usize, V: Variant, const XOR: bool>(
-        core: &mut ChaChaCore<Self, ROUNDS, V>,
-        buffer: &mut [u8],
-    ) {
-        todo!()
-    }
-}

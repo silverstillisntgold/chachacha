@@ -38,6 +38,7 @@ mod chacha;
 mod util;
 
 mod internal {
+    //use crate::backends::soft::Soft as TargetMachine;
     use crate::backends::TargetMachine;
     use crate::chacha::ChaChaCore;
     use crate::util::{Djb, Ietf};

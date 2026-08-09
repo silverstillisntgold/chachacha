@@ -71,24 +71,62 @@ where
     /// Xors the entirety of `buffer` with output from `self`.
     #[inline(never)]
     pub fn apply_keystream(&mut self, buffer: &mut [u8]) {
-        B::process::<ROUNDS, V, true>(self, buffer);
+        self.inner::<true>(buffer);
     }
 
     /// Fills the entirety of `buffer` with output from `self`.
     #[inline(never)]
     pub fn fill(&mut self, buffer: &mut [u8]) {
-        B::process::<ROUNDS, V, false>(self, buffer);
+        self.inner::<false>(buffer);
     }
 
     #[inline]
-    pub(crate) fn advance_blocks(&mut self, blocks: usize) {
+    fn inner<const XOR: bool>(&mut self, buffer: &mut [u8]) {
+        const {
+            assert!(ROUNDS > 0);
+            assert!(ROUNDS.is_multiple_of(2));
+        }
+
+        let mut backend = B::new(self);
+        let mut tmp = [0; BATCH_BYTES];
+
+        let (chunks, remainder) = buffer.as_chunks_mut::<BATCH_BYTES>();
+
+        // We're done with using `self`, so we can just go ahead and compute how
+        // many blocks our upcoming parallel computation will consume and increment
+        // the counter here.
+        let blocks = (chunks.len() as u64)
+            .wrapping_mul(BLOCKS as u64)
+            .wrapping_add(remainder.len().div_ceil(MATRIX_SIZE) as u64);
         unsafe {
             match V::VAR {
                 Variants::Djb => {
-                    self.row_d.u64x2[0] = self.row_d.u64x2[0].wrapping_add(blocks as u64);
+                    self.row_d.u64x2[0] = self.row_d.u64x2[0].wrapping_add(blocks);
                 }
                 Variants::Ietf => {
                     self.row_d.u32x4[0] = self.row_d.u32x4[0].wrapping_add(blocks as u32);
+                }
+            }
+        }
+
+        for chunk in chunks {
+            if XOR {
+                backend.fill::<B, ROUNDS, V>(&mut tmp);
+                for i in 0..BATCH_BYTES {
+                    chunk[i] ^= tmp[i];
+                }
+            } else {
+                backend.fill::<B, ROUNDS, V>(chunk);
+            }
+        }
+
+        if !remainder.is_empty() {
+            backend.fill::<B, ROUNDS, V>(&mut tmp);
+            for i in 0..remainder.len().min(tmp.len()) {
+                if XOR {
+                    remainder[i] ^= tmp[i];
+                } else {
+                    remainder[i] = tmp[i];
                 }
             }
         }
