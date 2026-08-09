@@ -34,10 +34,10 @@ impl Backend for Soft {
         }
     }
 
-    fn fill<B: Backend, const ROUNDS: usize, V: Variant>(
+    fn fill<B: Backend, const ROUNDS: usize, V: Variant, const XOR: bool>(
         &mut self,
         buffer: &mut [u8; BATCH_BYTES],
     ) {
-        self.inner.fill::<super::avx2::Avx2, ROUNDS, V>(buffer);
+        self.inner.fill::<super::avx2::Avx2, ROUNDS, V, XOR>(buffer);
     }
 }

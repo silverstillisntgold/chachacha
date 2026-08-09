@@ -88,8 +88,6 @@ where
         }
 
         let mut backend = B::new(self);
-        let mut tmp = [0; BATCH_BYTES];
-
         let (chunks, remainder) = buffer.as_chunks_mut::<BATCH_BYTES>();
 
         // We're done with using `self`, so we can just go ahead and compute how
@@ -110,24 +108,18 @@ where
         }
 
         for chunk in chunks {
-            if XOR {
-                backend.fill::<B, ROUNDS, V>(&mut tmp);
-                for i in 0..BATCH_BYTES {
-                    chunk[i] ^= tmp[i];
-                }
-            } else {
-                backend.fill::<B, ROUNDS, V>(chunk);
-            }
+            backend.fill::<B, ROUNDS, V, XOR>(chunk);
         }
 
         if !remainder.is_empty() {
-            backend.fill::<B, ROUNDS, V>(&mut tmp);
-            for i in 0..remainder.len().min(tmp.len()) {
-                if XOR {
-                    remainder[i] ^= tmp[i];
-                } else {
-                    remainder[i] = tmp[i];
-                }
+            let mut tmp = [0; BATCH_BYTES];
+            backend.fill::<B, ROUNDS, V, XOR>(&mut tmp);
+            unsafe {
+                core::ptr::copy_nonoverlapping(
+                    tmp.as_ptr(),
+                    remainder.as_mut_ptr(),
+                    remainder.len().min(tmp.len()),
+                );
             }
         }
     }

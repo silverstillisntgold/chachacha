@@ -1,5 +1,3 @@
-#![allow(clippy::missing_transmute_annotations)]
-
 #[cfg(target_arch = "x86")]
 use core::arch::x86 as arch;
 #[cfg(target_arch = "x86_64")]
@@ -57,7 +55,7 @@ impl Backend for Avx2 {
     }
 
     #[inline(never)]
-    fn fill<B: Backend, const ROUNDS: usize, V: Variant>(
+    fn fill<B: Backend, const ROUNDS: usize, V: Variant, const XOR: bool>(
         &mut self,
         buffer: &mut [u8; BATCH_BYTES],
     ) {
@@ -98,7 +96,17 @@ impl Backend for Avx2 {
                 }
             }
 
-            *buffer = core::mem::transmute(permute_blocks(a0, b0, c0, d0, a1, b1, c1, d1));
+            let permuted = core::mem::transmute::<[__m256i; 8], [u8; BATCH_BYTES]>(permute_blocks(
+                a0, b0, c0, d0, a1, b1, c1, d1,
+            ));
+
+            for i in 0..BATCH_BYTES {
+                if XOR {
+                    buffer[i] ^= permuted[i];
+                } else {
+                    buffer[i] = permuted[i];
+                }
+            }
         }
     }
 }

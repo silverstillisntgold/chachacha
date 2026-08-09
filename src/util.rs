@@ -33,7 +33,10 @@ pub trait Backend: Sized {
     ///
     /// TODO: When rust gets full const-generics it might be benefical to
     /// specialize the length of `buffer` to better optimize specific backends.
-    fn fill<B: Backend, const ROUNDS: usize, V: Variant>(&mut self, buffer: &mut [u8; BATCH_BYTES]);
+    fn fill<B: Backend, const ROUNDS: usize, V: Variant, const XOR: bool>(
+        &mut self,
+        buffer: &mut [u8; BATCH_BYTES],
+    );
 }
 
 /// Wrapper for the raw data of a ChaCha row. In a reference
