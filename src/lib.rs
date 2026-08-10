@@ -24,7 +24,6 @@ assert!(!all_zeros);
 [`ya-rand`]: https://crates.io/crates/ya-rand
 */
 
-#![allow(clippy::needless_range_loop, clippy::too_many_arguments)]
 //#![deny(missing_docs)]
 #![no_std]
 
@@ -75,18 +74,11 @@ pub type ChaCha20Ietf = ChaChaIetf<20>;
 
 #[cfg(test)]
 mod tests {
-    use crate::backends::*;
-    use crate::chacha::ChaChaCore;
-    use crate::chacha_reference::ChaCha as ChaChaRef;
-    use crate::util::*;
-    use core::iter::repeat_with;
+    use crate::{backends::*, chacha::ChaChaCore, chacha_reference::ChaCha as ChaChaRef, util::*};
     use core::mem::transmute;
 
+    const BUFFER_LEN: usize = (1 << 12) + 7;
     const TEST_COUNT: usize = 1 << 6;
-    const TEST_LEN: usize = 1 << 4;
-    /// Reference implementation needs 4 times the runs since it
-    /// produces a quarter of the output per block operation.
-    const TEST_LEN_REF: usize = TEST_LEN * 4;
 
     #[cfg(target_feature = "neon")]
     #[test]
@@ -262,13 +254,12 @@ mod tests {
         test_chacha::<soft::Soft, 20, Ietf>();
     }
 
-    fn test_chacha<B, const ROUNDS: usize, V>()
-    where
-        B: Backend,
-        V: Variant,
-    {
+    fn test_chacha<B: Backend, const ROUNDS: usize, V: Variant>() {
+        let mut seed = [0; 48];
+        let mut buf = [0; BUFFER_LEN];
+        let mut buf_ref = [0; BUFFER_LEN];
+
         for i in 0..TEST_COUNT {
-            let mut seed = [0; 48];
             getrandom::fill(&mut seed).unwrap();
             // The difference between the djb/ietf variants is only apparent
             // when index 12 crosses the `u32::MAX` threshold, since that's the
@@ -278,32 +269,16 @@ mod tests {
                 let seed_ref: &mut [u32; 12] = unsafe { transmute(&mut seed) };
                 seed_ref[8] = u32::MAX - 7;
             }
+
             let mut chacha = ChaChaCore::<B, ROUNDS, V>::from_bytes(seed);
+            chacha.fill(&mut buf);
+            chacha.apply_keystream(&mut buf);
+
             let mut chacha_ref = ChaChaRef::<ROUNDS, V>::from(seed);
+            chacha_ref.fill(&mut buf_ref);
+            chacha_ref.apply_keystream(&mut buf_ref);
 
-            let chacha_iter = repeat_with(|| {
-                let mut buffer = [0; 256];
-                chacha.fill(&mut buffer);
-                buffer
-            })
-            .take(TEST_LEN)
-            .flatten();
-            let chacha_ref_iter = repeat_with(|| chacha_ref.get_block())
-                .take(TEST_LEN_REF)
-                .flatten();
-            chacha_iter
-                .zip(chacha_ref_iter)
-                .for_each(|(a, b)| assert_eq!(a, b));
-
-            const BIG_IF_TRU: usize = 512 * 2;
-            for _ in 0..TEST_COUNT {
-                let mut buf = [0; BIG_IF_TRU];
-                let mut buf_ref = [0; BIG_IF_TRU];
-                let size = getrandom::u64().unwrap() as usize % BIG_IF_TRU;
-                chacha.fill(&mut buf[..size]);
-                chacha_ref.fill(&mut buf_ref[..size]);
-                assert_eq!(buf, buf_ref);
-            }
+            assert_eq!(buf, buf_ref);
         }
     }
 }

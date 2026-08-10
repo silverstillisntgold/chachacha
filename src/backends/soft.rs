@@ -121,8 +121,16 @@ impl Backend for Soft {
 
         out.add(self.clone());
 
-        self.increment::<{ BLOCKS / 2 }, V>();
+        self.increment::<BLOCKS, V>();
 
-        *buffer = unsafe { core::mem::transmute::<Soft, [u8; BATCH_BYTES]>(out) };
+        let tmp = unsafe { core::mem::transmute::<Soft, [u8; BATCH_BYTES]>(out) };
+
+        for i in 0..BATCH_BYTES {
+            if XOR {
+                buffer[i] ^= tmp[i];
+            } else {
+                buffer[i] = tmp[i];
+            }
+        }
     }
 }

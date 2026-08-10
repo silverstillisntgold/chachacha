@@ -114,12 +114,12 @@ where
         if !remainder.is_empty() {
             let mut tmp = [0; BATCH_BYTES];
             backend.fill::<B, ROUNDS, V, XOR>(&mut tmp);
-            unsafe {
-                core::ptr::copy_nonoverlapping(
-                    tmp.as_ptr(),
-                    remainder.as_mut_ptr(),
-                    remainder.len().min(tmp.len()),
-                );
+            for (r, t) in remainder.iter_mut().zip(tmp) {
+                if XOR {
+                    *r ^= t;
+                } else {
+                    *r = t;
+                }
             }
         }
     }

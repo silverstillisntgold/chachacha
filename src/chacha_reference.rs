@@ -1,6 +1,5 @@
 /*!
-Contains a reference ChaCha implementation, which is validated against the reference
-ChaCha test vectors (available [here]).
+Contains a reference ChaCha implementation, which is validated using the reference ChaCha test vectors (available [here]).
 
 The tests are only run against the original [`Djb`] variant, but the difference in a simple
 reference implementation like this is trivial (literally a single line of code), so we assume passing
@@ -10,10 +9,7 @@ all of these tests means we would also pass the equivalent [`Ietf`] variant test
 */
 
 use crate::util::*;
-use core::iter::repeat_with;
-use core::marker::PhantomData;
-use core::mem::transmute;
-use core::ops::Add;
+use core::{iter::repeat_with, marker::PhantomData, mem::transmute, ops::Add};
 
 type ChaChaMatrix = [u32; SIZE];
 type ChaChaResult = [u8; MATRIX_SIZE];
@@ -56,7 +52,7 @@ impl<const ROUNDS: usize, V> From<u8> for ChaCha<ROUNDS, V> {
     fn from(value: u8) -> Self {
         let mut result = ChaCha::from([value; 48]);
         unsafe {
-            // Tests expect the counter to start at 0.
+            // Reference tests all expect the counter to start at 0.
             result.row_d.u64x2[0] = 0;
         }
         result
@@ -113,15 +109,12 @@ impl<const ROUNDS: usize, V: Variant> ChaCha<ROUNDS, V> {
         }
     }
 
-    pub fn fill(&mut self, dst: &mut [u8]) {
-        let src = repeat_with(|| self.get_block()).flatten();
-        dst.iter_mut().zip(src).for_each(|(dst_val, src_val)| {
-            *dst_val = src_val;
-        });
-    }
+    fn get_block(&mut self) -> ChaChaResult {
+        const {
+            assert!(ROUNDS > 0);
+            assert!(ROUNDS.is_multiple_of(2));
+        }
 
-    #[inline(never)]
-    pub fn get_block(&mut self) -> ChaChaResult {
         let mut cur = self.clone();
 
         for _ in 0..(ROUNDS / 2) {
@@ -145,6 +138,25 @@ impl<const ROUNDS: usize, V: Variant> ChaCha<ROUNDS, V> {
         }
 
         unsafe { transmute(result) }
+    }
+
+    fn inner<const XOR: bool>(&mut self, dst: &mut [u8]) {
+        let src = repeat_with(|| self.get_block()).flatten();
+        dst.iter_mut().zip(src).for_each(|(dst_val, src_val)| {
+            if XOR {
+                *dst_val ^= src_val;
+            } else {
+                *dst_val = src_val;
+            }
+        });
+    }
+
+    pub fn apply_keystream(&mut self, dst: &mut [u8]) {
+        self.inner::<true>(dst);
+    }
+
+    pub fn fill(&mut self, dst: &mut [u8]) {
+        self.inner::<false>(dst);
     }
 }
 
