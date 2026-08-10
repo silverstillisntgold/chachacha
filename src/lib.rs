@@ -58,6 +58,8 @@ pub use internal::{ChaChaDjb, ChaChaIetf};
 #[cfg(not(feature = "_internal"))]
 use internal::{ChaChaDjb, ChaChaIetf};
 
+pub use util::BATCH_BYTES;
+
 /// ChaCha with 8 rounds, a 64-bit counter, and a 64-bit nonce.
 pub type ChaCha8Djb = ChaChaDjb<8>;
 /// ChaCha with 12 rounds, a 64-bit counter, and a 64-bit nonce.
