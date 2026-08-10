@@ -97,40 +97,20 @@ fn double_rounds<const ROUNDS: usize>(
 #[inline(always)]
 fn add_xor_rotate(a: &mut __m128i, b: &mut __m128i, c: &mut __m128i, d: &mut __m128i) {
     unsafe {
-        // a += b
         *a = _mm_add_epi32(*a, *b);
-
-        // d ^= a
         *d = _mm_xor_si128(*d, *a);
-
-        // d <<<= 16
         *d = _mm_or_si128(_mm_slli_epi32::<16>(*d), _mm_srli_epi32::<16>(*d));
 
-        // c += d
         *c = _mm_add_epi32(*c, *d);
-
-        // b ^= c
         *b = _mm_xor_si128(*b, *c);
-
-        // b <<<= 12
         *b = _mm_or_si128(_mm_slli_epi32::<12>(*b), _mm_srli_epi32::<20>(*b));
 
-        // a += b
         *a = _mm_add_epi32(*a, *b);
-
-        // d ^= a
         *d = _mm_xor_si128(*d, *a);
-
-        // d <<<= 8
         *d = _mm_or_si128(_mm_slli_epi32::<8>(*d), _mm_srli_epi32::<24>(*d));
 
-        // c += d
         *c = _mm_add_epi32(*c, *d);
-
-        // b ^= c
         *b = _mm_xor_si128(*b, *c);
-
-        // b <<<= 7
         *b = _mm_or_si128(_mm_slli_epi32::<7>(*b), _mm_srli_epi32::<25>(*b));
     }
 }
@@ -138,15 +118,8 @@ fn add_xor_rotate(a: &mut __m128i, b: &mut __m128i, c: &mut __m128i, d: &mut __m
 #[inline(always)]
 fn rows_to_cols(a: &mut __m128i, c: &mut __m128i, d: &mut __m128i) {
     unsafe {
-        // A: rotate right by one u32.
         *a = _mm_shuffle_epi32::<0x93>(*a);
-
-        // B remains unchanged.
-
-        // C: rotate left by one u32.
         *c = _mm_shuffle_epi32::<0x39>(*c);
-
-        // D: rotate left by two u32s.
         *d = _mm_shuffle_epi32::<0x4e>(*d);
     }
 }
@@ -154,15 +127,8 @@ fn rows_to_cols(a: &mut __m128i, c: &mut __m128i, d: &mut __m128i) {
 #[inline(always)]
 fn cols_to_rows(a: &mut __m128i, c: &mut __m128i, d: &mut __m128i) {
     unsafe {
-        // Undo A's right-one rotation with a left-one rotation.
         *a = _mm_shuffle_epi32::<0x39>(*a);
-
-        // B remains unchanged.
-
-        // Undo C's left-one rotation with a right-one rotation.
         *c = _mm_shuffle_epi32::<0x93>(*c);
-
-        // A rotation by two is its own inverse.
         *d = _mm_shuffle_epi32::<0x4e>(*d);
     }
 }
