@@ -1,8 +1,7 @@
-use chacha20::{KeyIvInit, cipher::StreamCipher};
-use rand::{Rng, SeedableRng};
+// use rand::{Rng, SeedableRng};
 use std::time::Instant;
 
-const SIZE: usize = 12 * (1 << 30) + 7;
+const SIZE: usize = 11 * (1 << 30) + 7;
 
 fn main() {
     let mut buf = [0; 48];
@@ -23,28 +22,28 @@ fn main() {
     println!("time: {:.4}", delta);
     println!("GB/s: {:.4}", SIZE as f64 / delta / 1e9);
 
-    let mut c3 = chacha20::ChaCha8Rng::from_rng(&mut rand::rng());
-    let start = Instant::now();
-    c3.fill_bytes(&mut buffer);
-    let delta = start.elapsed().as_secs_f64();
-    println!("time: {:.4}", delta);
-    println!("GB/s: {:.4}", SIZE as f64 / delta / 1e9);
+    // let mut c3 = chacha20::ChaCha8Rng::from_rng(&mut rand::rng());
+    // let start = Instant::now();
+    // c3.fill_bytes(&mut buffer);
+    // let delta = start.elapsed().as_secs_f64();
+    // println!("time: {:.4}", delta);
+    // println!("GB/s: {:.4}", SIZE as f64 / delta / 1e9);
 
-    let mut key = [0; 32];
-    let mut nonce = [0; 12];
-    getrandom::fill(&mut key).unwrap();
-    getrandom::fill(&mut nonce).unwrap();
-    let mut c31 = chacha20::ChaCha8::new_from_slices(&key, &nonce).unwrap();
-    let start = Instant::now();
-    c31.apply_keystream(&mut buffer);
-    let delta = start.elapsed().as_secs_f64();
-    println!("time: {:.4}", delta);
-    println!("GB/s: {:.4}", SIZE as f64 / delta / 1e9);
+    // let mut key = [0; 32];
+    // let mut nonce = [0; 12];
+    // getrandom::fill(&mut key).unwrap();
+    // getrandom::fill(&mut nonce).unwrap();
+    // let mut c31 = chacha20::ChaCha8::new_from_slices(&key, &nonce).unwrap();
+    // let start = Instant::now();
+    // c31.apply_keystream(&mut buffer);
+    // let delta = start.elapsed().as_secs_f64();
+    // println!("time: {:.4}", delta);
+    // println!("GB/s: {:.4}", SIZE as f64 / delta / 1e9);
 
-    let mut c4 = rand_chacha::ChaCha8Rng::from_rng(&mut rand::rng());
-    let start = Instant::now();
-    c4.fill_bytes(&mut buffer);
-    let delta = start.elapsed().as_secs_f64();
-    println!("time: {:.4}", delta);
-    println!("GB/s: {:.4}", SIZE as f64 / delta / 1e9);
+    // let mut c4 = rand_chacha::ChaCha8Rng::from_rng(&mut rand::rng());
+    // let start = Instant::now();
+    // c4.fill_bytes(&mut buffer);
+    // let delta = start.elapsed().as_secs_f64();
+    // println!("time: {:.4}", delta);
+    // println!("GB/s: {:.4}", SIZE as f64 / delta / 1e9);
 }

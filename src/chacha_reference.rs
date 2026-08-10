@@ -16,7 +16,7 @@ use core::mem::transmute;
 use core::ops::Add;
 
 type ChaChaMatrix = [u32; SIZE];
-type ChaChaResult = [u8; SIZE * size_of::<u32>()];
+type ChaChaResult = [u8; MATRIX_SIZE];
 
 #[repr(C)]
 pub struct ChaCha<const ROUNDS: usize, V> {
@@ -43,10 +43,10 @@ impl<const ROUNDS: usize, V> Add for ChaCha<ROUNDS, V> {
 impl<const ROUNDS: usize, V> Clone for ChaCha<ROUNDS, V> {
     fn clone(&self) -> Self {
         Self {
-            row_a: self.row_a.clone(),
-            row_b: self.row_b.clone(),
-            row_c: self.row_c.clone(),
-            row_d: self.row_d.clone(),
+            row_a: self.row_a,
+            row_b: self.row_b,
+            row_c: self.row_c,
+            row_d: self.row_d,
             _pd: PhantomData,
         }
     }
@@ -69,9 +69,9 @@ impl<const ROUNDS: usize, V> From<[u8; 48]> for ChaCha<ROUNDS, V> {
         let rows: [Row; SEED_LEN_ROW] = unsafe { transmute(value) };
         Self {
             row_a: ROW_A,
-            row_b: rows[0].clone(),
-            row_c: rows[1].clone(),
-            row_d: rows[2].clone(),
+            row_b: rows[0],
+            row_c: rows[1],
+            row_d: rows[2],
             _pd: PhantomData,
         }
     }

@@ -5,14 +5,15 @@ use core::arch::x86_64 as arch;
 
 use crate::{
     chacha::ChaChaCore,
-    util::{BATCH_BYTES, BLOCKS, Backend, MATRIX_SIZE, ROW_A, Variant, Variants},
+    util::{BATCH_BYTES, BLOCKS, Backend, ROW_A, Variant, Variants},
 };
 use arch::{
-    __m256i, _mm256_add_epi32, _mm256_add_epi64, _mm256_broadcastsi128_si256,
-    _mm256_extracti128_si256, _mm256_loadu_si256, _mm256_or_si256, _mm256_permute2x128_si256,
-    _mm256_setr_epi32, _mm256_setr_epi64x, _mm256_shuffle_epi32, _mm256_slli_epi32,
-    _mm256_srli_epi32, _mm256_storeu_si256, _mm256_xor_si256,
+    __m256i, _mm256_add_epi32, _mm256_add_epi64, _mm256_broadcastsi128_si256, _mm256_or_si256,
+    _mm256_permute2x128_si256, _mm256_setr_epi32, _mm256_setr_epi64x, _mm256_shuffle_epi32,
+    _mm256_slli_epi32, _mm256_srli_epi32, _mm256_xor_si256,
 };
+
+const VECTOR_WIDTH: usize = BATCH_BYTES / size_of::<__m256i>();
 
 pub struct Avx2 {
     row_a: __m256i,
@@ -96,9 +97,9 @@ impl Backend for Avx2 {
                 }
             }
 
-            let permuted = core::mem::transmute::<[__m256i; 8], [u8; BATCH_BYTES]>(permute_blocks(
-                a0, b0, c0, d0, a1, b1, c1, d1,
-            ));
+            let permuted = core::mem::transmute::<[__m256i; VECTOR_WIDTH], [u8; BATCH_BYTES]>(
+                permute_blocks(a0, b0, c0, d0, a1, b1, c1, d1),
+            );
 
             for i in 0..BATCH_BYTES {
                 if XOR {
@@ -111,7 +112,7 @@ impl Backend for Avx2 {
     }
 }
 
-#[inline]
+#[inline(always)]
 fn permute_blocks(
     a0: __m256i,
     b0: __m256i,
@@ -121,7 +122,7 @@ fn permute_blocks(
     b1: __m256i,
     c1: __m256i,
     d1: __m256i,
-) -> [__m256i; 8] {
+) -> [__m256i; VECTOR_WIDTH] {
     unsafe {
         [
             _mm256_permute2x128_si256::<0x20>(a0, b0),
@@ -136,7 +137,7 @@ fn permute_blocks(
     }
 }
 
-#[inline]
+#[inline(always)]
 fn double_rounds<const ROUNDS: usize>(
     a0: &mut __m256i,
     b0: &mut __m256i,
@@ -155,7 +156,7 @@ fn double_rounds<const ROUNDS: usize>(
     }
 }
 
-#[inline]
+#[inline(always)]
 fn add_xor_rotate(
     a0: &mut __m256i,
     b0: &mut __m256i,
@@ -217,7 +218,7 @@ fn add_xor_rotate(
     }
 }
 
-#[inline]
+#[inline(always)]
 fn rows_to_cols(
     a0: &mut __m256i,
     c0: &mut __m256i,
@@ -243,7 +244,7 @@ fn rows_to_cols(
     }
 }
 
-#[inline]
+#[inline(always)]
 fn cols_to_rows(
     a0: &mut __m256i,
     c0: &mut __m256i,

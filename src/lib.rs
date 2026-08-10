@@ -269,7 +269,7 @@ mod tests {
     {
         for i in 0..TEST_COUNT {
             let mut seed = [0; 48];
-            seed.fill_with(|| getrandom::u64().unwrap() as u8);
+            getrandom::fill(&mut seed).unwrap();
             // The difference between the djb/ietf variants is only apparent
             // when index 12 crosses the `u32::MAX` threshold, since that's the
             // point where ietf would only wrap index 12 around to 0, but the

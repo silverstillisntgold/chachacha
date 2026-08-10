@@ -1,8 +1,9 @@
-use crate::chacha::ChaChaCore;
 #[cfg(target_arch = "x86")]
 use core::arch::x86::__m128i;
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::__m128i;
+
+use crate::chacha::ChaChaCore;
 
 /// Columns in a reference ChaCha matrix.
 pub const COLUMNS: usize = 4;
@@ -46,6 +47,7 @@ pub trait Backend: Sized {
 ///
 /// The size and aligment of this struct are both 16 bytes to enable
 /// the compiler to generate aligned operations wherever possible.
+#[derive(Clone, Copy)]
 #[repr(C, align(16))]
 pub union Row {
     pub u8x16: [u8; 16],
@@ -55,13 +57,6 @@ pub union Row {
     // Useful in x86 backends.
     #[cfg(target_feature = "sse2")]
     pub u128x1: __m128i,
-}
-
-impl Clone for Row {
-    #[inline]
-    fn clone(&self) -> Self {
-        unsafe { Self { u16x8: self.u16x8 } }
-    }
 }
 
 pub enum Variants {
