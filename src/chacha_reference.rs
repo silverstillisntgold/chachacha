@@ -9,27 +9,25 @@ all of these tests means we would also pass the equivalent [`Ietf`] variant test
 [here]: https://github.com/secworks/chacha_testvectors/blob/master/src/chacha_testvectors.txt
 */
 
-use crate::rounds::*;
 use crate::util::*;
-use crate::variations::*;
 use core::iter::repeat_with;
 use core::marker::PhantomData;
 use core::mem::transmute;
 use core::ops::Add;
 
-type ChaChaMatrix = [u32; MATRIX_SIZE_U32];
-type ChaChaResult = [u8; MATRIX_SIZE_U8];
+type ChaChaMatrix = [u32; SIZE];
+type ChaChaResult = [u8; MATRIX_SIZE];
 
 #[repr(C)]
-pub struct ChaCha<R, V> {
+pub struct ChaCha<const ROUNDS: usize, V> {
     row_a: Row,
     row_b: Row,
     row_c: Row,
     row_d: Row,
-    _phantom: PhantomData<(R, V)>,
+    _pd: PhantomData<V>,
 }
 
-impl<R, V> Add for ChaCha<R, V> {
+impl<const ROUNDS: usize, V> Add for ChaCha<ROUNDS, V> {
     type Output = ChaChaMatrix;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -42,21 +40,21 @@ impl<R, V> Add for ChaCha<R, V> {
     }
 }
 
-impl<R, V> Clone for ChaCha<R, V> {
+impl<const ROUNDS: usize, V> Clone for ChaCha<ROUNDS, V> {
     fn clone(&self) -> Self {
         Self {
             row_a: self.row_a,
             row_b: self.row_b,
             row_c: self.row_c,
             row_d: self.row_d,
-            _phantom: PhantomData,
+            _pd: PhantomData,
         }
     }
 }
 
-impl<R, V> From<u8> for ChaCha<R, V> {
+impl<const ROUNDS: usize, V> From<u8> for ChaCha<ROUNDS, V> {
     fn from(value: u8) -> Self {
-        let mut result = ChaCha::from([value; SEED_LEN_U8]);
+        let mut result = ChaCha::from([value; 48]);
         unsafe {
             // Tests expect the counter to start at 0.
             result.row_d.u64x2[0] = 0;
@@ -65,21 +63,21 @@ impl<R, V> From<u8> for ChaCha<R, V> {
     }
 }
 
-impl<R, V> From<[u8; SEED_LEN_U8]> for ChaCha<R, V> {
-    fn from(value: [u8; SEED_LEN_U8]) -> Self {
-        const SEED_LEN_ROW: usize = SEED_LEN_U8 / size_of::<Row>();
+impl<const ROUNDS: usize, V> From<[u8; 48]> for ChaCha<ROUNDS, V> {
+    fn from(value: [u8; 48]) -> Self {
+        const SEED_LEN_ROW: usize = 48 / size_of::<Row>();
         let rows: [Row; SEED_LEN_ROW] = unsafe { transmute(value) };
         Self {
             row_a: ROW_A,
             row_b: rows[0],
             row_c: rows[1],
             row_d: rows[2],
-            _phantom: PhantomData,
+            _pd: PhantomData,
         }
     }
 }
 
-impl<R: DoubleRounds, V: Variant> ChaCha<R, V> {
+impl<const ROUNDS: usize, V: Variant> ChaCha<ROUNDS, V> {
     fn quarter_round(&mut self, a: usize, b: usize, c: usize, d: usize) {
         let matrix: &mut ChaChaMatrix = unsafe { transmute(self) };
 
@@ -126,7 +124,7 @@ impl<R: DoubleRounds, V: Variant> ChaCha<R, V> {
     pub fn get_block(&mut self) -> ChaChaResult {
         let mut cur = self.clone();
 
-        for _ in 0..R::COUNT {
+        for _ in 0..(ROUNDS / 2) {
             // Column rounds
             cur.quarter_round(0, 4, 8, 12);
             cur.quarter_round(1, 5, 9, 13);
@@ -153,7 +151,7 @@ impl<R: DoubleRounds, V: Variant> ChaCha<R, V> {
 #[test]
 fn reference_8_rounds() {
     // TC1: All zero key and IV.
-    let mut chacha = ChaCha::<R8, Djb>::from(0);
+    let mut chacha = ChaCha::<8, Djb>::from(0);
     let block_1 = chacha.get_block();
     let block_2 = chacha.get_block();
     assert_eq!(
@@ -372,7 +370,7 @@ fn reference_8_rounds() {
 #[test]
 fn reference_12_rounds() {
     // TC1: All zero key and IV.
-    let mut chacha = ChaCha::<R12, Djb>::from(0);
+    let mut chacha = ChaCha::<12, Djb>::from(0);
     let block_1 = chacha.get_block();
     let block_2 = chacha.get_block();
     assert_eq!(
@@ -591,7 +589,7 @@ fn reference_12_rounds() {
 #[test]
 fn reference_20_rounds() {
     // TC1: All zero key and IV.
-    let mut chacha = ChaCha::<R20, Djb>::from(0);
+    let mut chacha = ChaCha::<20, Djb>::from(0);
     let block_1 = chacha.get_block();
     let block_2 = chacha.get_block();
     assert_eq!(

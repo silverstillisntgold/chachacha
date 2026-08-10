@@ -6,14 +6,14 @@ jobs:
     name: test
     strategy:
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm]
+        os: [ubuntu-26.04, ubuntu-26.04-arm]
         toolchain: [beta, nightly, stable]
     runs-on: ${{ matrix.os }}
     env:
       RUSTFLAGS: -C target-cpu=native
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install Rust
         uses: dtolnay/rust-toolchain@master
         with:

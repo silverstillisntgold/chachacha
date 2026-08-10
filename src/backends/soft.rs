@@ -1,114 +1,128 @@
-use super::{BUF_SIZE_U32, Internal, Vector, VectorOps};
-use crate::util::Row;
-use core::marker::PhantomData;
-use core::ops::{Add, BitOr, BitXor};
+use crate::{
+    chacha::ChaChaCore,
+    util::{BATCH_BYTES, BLOCKS, Backend, ROW_A, Row, SIZE, Variant, Variants},
+};
 
 #[derive(Clone, Copy)]
-pub struct Soft;
+#[repr(C, align(64))]
+union InternalMatrix {
+    u32x16: [u32; SIZE],
+    u64x8: [u64; SIZE / 2],
+}
 
-impl Add for Vector<Soft> {
-    type Output = Self;
+impl InternalMatrix {
+    #[inline(always)]
+    fn increment<const INCREMENT: usize, V: Variant>(&mut self) {
+        const {
+            assert!(INCREMENT <= u32::MAX as usize);
+        }
+        unsafe {
+            match V::VAR {
+                Variants::Djb => self.u64x8[6] = self.u64x8[6].wrapping_add(INCREMENT as u64),
+                Variants::Ietf => self.u32x16[12] = self.u32x16[12].wrapping_add(INCREMENT as u32),
+            }
+        }
+    }
 
     #[inline(always)]
-    fn add(mut self, rhs: Self) -> Self::Output {
+    fn add(&mut self, other: Self) {
         unsafe {
-            for i in 0..BUF_SIZE_U32 {
-                // Need to use `wrapping_add` or debug builds will lose their shit.
-                self.u32x16[i] = self.u32x16[i].wrapping_add(rhs.u32x16[i]);
+            for (s, o) in self.u32x16.iter_mut().zip(other.u32x16) {
+                *s = s.wrapping_add(o);
             }
-            self
+        }
+    }
+
+    #[inline(always)]
+    fn quarter_round(&mut self, a: usize, b: usize, c: usize, d: usize) {
+        unsafe {
+            self.u32x16[a] = self.u32x16[a].wrapping_add(self.u32x16[b]);
+            self.u32x16[d] ^= self.u32x16[a];
+            self.u32x16[d] = self.u32x16[d].rotate_left(16);
+
+            self.u32x16[c] = self.u32x16[c].wrapping_add(self.u32x16[d]);
+            self.u32x16[b] ^= self.u32x16[c];
+            self.u32x16[b] = self.u32x16[b].rotate_left(12);
+
+            self.u32x16[a] = self.u32x16[a].wrapping_add(self.u32x16[b]);
+            self.u32x16[d] ^= self.u32x16[a];
+            self.u32x16[d] = self.u32x16[d].rotate_left(8);
+
+            self.u32x16[c] = self.u32x16[c].wrapping_add(self.u32x16[d]);
+            self.u32x16[b] ^= self.u32x16[c];
+            self.u32x16[b] = self.u32x16[b].rotate_left(7);
         }
     }
 }
 
-impl BitOr for Vector<Soft> {
-    type Output = Self;
+#[derive(Clone)]
+pub struct Soft {
+    inner: [InternalMatrix; BLOCKS],
+}
+
+impl Soft {
+    #[inline(always)]
+    fn increment<const INCREMENT: usize, V: Variant>(&mut self) {
+        for s in self.inner.iter_mut() {
+            s.increment::<INCREMENT, V>();
+        }
+    }
 
     #[inline(always)]
-    fn bitor(mut self, rhs: Self) -> Self::Output {
-        unsafe {
-            for i in 0..BUF_SIZE_U32 {
-                self.u32x16[i] |= rhs.u32x16[i];
-            }
-            self
+    fn add(&mut self, other: Self) {
+        for (s, o) in self.inner.iter_mut().zip(other.inner) {
+            s.add(o);
+        }
+    }
+
+    #[inline(always)]
+    fn quarter_round(&mut self, a: usize, b: usize, c: usize, d: usize) {
+        for internal_matrix in self.inner.iter_mut() {
+            internal_matrix.quarter_round(a, b, c, d);
         }
     }
 }
 
-impl BitXor for Vector<Soft> {
-    type Output = Self;
-
-    #[inline(always)]
-    fn bitxor(mut self, rhs: Self) -> Self::Output {
-        unsafe {
-            for i in 0..BUF_SIZE_U32 {
-                self.u32x16[i] ^= rhs.u32x16[i];
-            }
-            self
-        }
-    }
-}
-
-impl VectorOps for Vector<Soft> {
-    #[inline(always)]
-    fn broadcast_row(value: Row) -> Self {
-        Self {
-            inner: Internal { rowx4: [value; _] },
-            _phantom: PhantomData,
-        }
+impl Backend for Soft {
+    #[inline(never)]
+    fn new<B: Backend, const ROUNDS: usize, V: Variant>(core: &ChaChaCore<B, ROUNDS, V>) -> Self {
+        let src = [ROW_A, core.row_b, core.row_c, core.row_d];
+        let inner0 = unsafe { core::mem::transmute::<[Row; BLOCKS], InternalMatrix>(src) };
+        let mut inner1 = inner0;
+        let mut inner2 = inner0;
+        let mut inner3 = inner0;
+        inner1.increment::<1, V>();
+        inner2.increment::<2, V>();
+        inner3.increment::<3, V>();
+        let inner = [inner0, inner1, inner2, inner3];
+        Self { inner }
     }
 
-    #[inline(always)]
-    fn shift_left<const K: i32>(mut self) -> Self {
-        unsafe {
-            for i in 0..BUF_SIZE_U32 {
-                self.u32x16[i] <<= K;
-            }
-            self
-        }
-    }
+    #[inline(never)]
+    fn fill<B: Backend, const ROUNDS: usize, V: Variant, const XOR: bool>(
+        &mut self,
+        buffer: &mut [u8; BATCH_BYTES],
+    ) {
+        let mut out = self.clone();
 
-    #[inline(always)]
-    fn shift_right<const K: i32>(mut self) -> Self {
-        unsafe {
-            for i in 0..BUF_SIZE_U32 {
-                self.u32x16[i] >>= K;
-            }
-            self
-        }
-    }
+        for _ in 0..(ROUNDS / 2) {
+            // column rounds
+            out.quarter_round(0, 4, 8, 12);
+            out.quarter_round(1, 5, 9, 13);
+            out.quarter_round(2, 6, 10, 14);
+            out.quarter_round(3, 7, 11, 15);
 
-    #[inline(always)]
-    fn shuffle_internal<const MASK: i32>(mut self) -> Self {
-        const fn select<const MASK: i32, const K: i32>() -> usize {
-            (MASK as usize >> K) & 0b_11
+            // diagonal rounds
+            out.quarter_round(0, 5, 10, 15);
+            out.quarter_round(1, 6, 11, 12);
+            out.quarter_round(2, 7, 8, 13);
+            out.quarter_round(3, 4, 9, 14);
         }
-        unsafe {
-            // Testing demonstrates that LLVM has no problem turning this into optimal
-            // shuffling operations on targets which support them.
-            self.u32x16 = [
-                // First 128-bit lane.
-                self.u32x16[select::<MASK, 0>()],
-                self.u32x16[select::<MASK, 2>()],
-                self.u32x16[select::<MASK, 4>()],
-                self.u32x16[select::<MASK, 6>()],
-                // Second 128-bit lane.
-                self.u32x16[4 + select::<MASK, 0>()],
-                self.u32x16[4 + select::<MASK, 2>()],
-                self.u32x16[4 + select::<MASK, 4>()],
-                self.u32x16[4 + select::<MASK, 6>()],
-                // Third 128-bit lane.
-                self.u32x16[8 + select::<MASK, 0>()],
-                self.u32x16[8 + select::<MASK, 2>()],
-                self.u32x16[8 + select::<MASK, 4>()],
-                self.u32x16[8 + select::<MASK, 6>()],
-                // Fourth 128-bit lane.
-                self.u32x16[12 + select::<MASK, 0>()],
-                self.u32x16[12 + select::<MASK, 2>()],
-                self.u32x16[12 + select::<MASK, 4>()],
-                self.u32x16[12 + select::<MASK, 6>()],
-            ];
-            self
-        }
+
+        out.add(self.clone());
+
+        self.increment::<{ BLOCKS / 2 }, V>();
+
+        *buffer = unsafe { core::mem::transmute::<Soft, [u8; BATCH_BYTES]>(out) };
     }
 }

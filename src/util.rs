@@ -1,47 +1,52 @@
-/*!
-Module containing useful constants/structs.
-*/
-
 #[cfg(target_arch = "x86")]
 use core::arch::x86::__m128i;
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::__m128i;
 
-/// Size (in 8-bit integers) of a single ChaCha computation.
-pub const BUF_LEN_U8: usize = MATRIX_SIZE_U8 * DEPTH;
-/// Size (in 64-bit integers) of a single ChaCha computation.
-pub const BUF_LEN_U64: usize = BUF_LEN_U8 / size_of::<u64>();
+use crate::chacha::ChaChaCore;
 
-/// Columns present in a standard ChaCha matrix.
+/// Columns in a reference ChaCha matrix.
 pub const COLUMNS: usize = 4;
-/// Rows present in a standard ChaCha matrix.
+/// Rows in a reference ChaCha matrix.
 pub const ROWS: usize = 4;
+/// Size (in 32-bit ints) of a reference ChaCha matrix.
+pub const SIZE: usize = COLUMNS * ROWS;
+/// Size (in bytes) of a reference ChaCha matrix.
+pub const MATRIX_SIZE: usize = SIZE * size_of::<u32>();
 
-/// Size (in 8-bit integers) of the raw seed for a ChaCha instance.
-pub const SEED_LEN_U8: usize = (ROWS - 1) * size_of::<Row>();
-/// Size (in 16-bit integers) of the raw seed for a ChaCha instance.
-pub const SEED_LEN_U16: usize = SEED_LEN_U8 / size_of::<u16>();
-/// Size (in 32-bit integers) of the raw seed for a ChaCha instance.
-pub const SEED_LEN_U32: usize = SEED_LEN_U8 / size_of::<u32>();
-/// Size (in 64-bit integers) of the raw seed for a ChaCha instance.
-pub const SEED_LEN_U64: usize = SEED_LEN_U8 / size_of::<u64>();
+/// The amount of ChaCha instances processed in parallel.
+pub const BLOCKS: usize = 4;
+/// The amount of bytes generated in parallel.
+pub const BATCH_BYTES: usize = BLOCKS * MATRIX_SIZE;
 
-/// Size (in 8-bit integers) of a reference ChaCha matrix.
-pub const MATRIX_SIZE_U8: usize = MATRIX_SIZE_U32 * size_of::<u32>();
-/// Size (in 32-bit integers) of a reference ChaCha matrix.
-pub const MATRIX_SIZE_U32: usize = COLUMNS * ROWS;
-
-/// The amount of distinct ChaCha blocks we process in parallel.
-pub const DEPTH: usize = 4;
 /// Standard constant used in all ChaCha implementations.
 pub const ROW_A: Row = Row {
     u8x16: *b"expand 32-byte k",
 };
 
+/// Trait which represents an implementation for a specific hardware architecture.
+pub trait Backend: Sized {
+    /// Creates a new instance of [`Self`], which is used for holding
+    /// initial state and tracking the running counter.
+    fn new<B: Backend, const ROUNDS: usize, V: Variant>(core: &ChaChaCore<B, ROUNDS, V>) -> Self;
+
+    /// Fills `buffer` with the output stream of `self`.
+    ///
+    /// TODO: When rust gets full const-generics it might be benefical to
+    /// specialize the length of `buffer` to better optimize specific backends.
+    fn fill<B: Backend, const ROUNDS: usize, V: Variant, const XOR: bool>(
+        &mut self,
+        buffer: &mut [u8; BATCH_BYTES],
+    );
+}
+
 /// Wrapper for the raw data of a ChaCha row. In a reference
 /// implementation this would just be the `u32x4` field, but having
 /// `u64x2` is useful for working with a 64-bit counter and `u8x16`
 /// is useful for some tests. `u16x8` is included for completeness.
+///
+/// The size and aligment of this struct are both 16 bytes to enable
+/// the compiler to generate aligned operations wherever possible.
 #[derive(Clone, Copy)]
 #[repr(C, align(16))]
 pub union Row {
@@ -49,17 +54,32 @@ pub union Row {
     pub u16x8: [u16; 8],
     pub u32x4: [u32; 4],
     pub u64x2: [u64; 2],
-    // Used for broadcasting in avx2 and avx512 backends.
+    // Useful in x86 backends.
     #[cfg(target_feature = "sse2")]
     pub u128x1: __m128i,
 }
 
-/// `ChaChaCore` without the `PhantomData` types.
-///
-/// Makes implementation in `Machine` less verbose.
-#[repr(C)]
-pub struct ChaChaNaked {
-    pub row_b: Row,
-    pub row_c: Row,
-    pub row_d: Row,
+pub enum Variants {
+    /// Original variant proposed by the author of the salsa
+    /// and chacha algorithms: Daniel J. Bernstein.
+    Djb,
+    /// Alternative variant specified by the IETF, most often
+    /// used in conjunction with Poly1305.
+    Ietf,
+}
+
+pub trait Variant {
+    const VAR: Variants;
+}
+
+/// Type-level representation of [`Variants::Djb`].
+pub struct Djb;
+impl Variant for Djb {
+    const VAR: Variants = Variants::Djb;
+}
+
+/// Type-level representation of [`Variants::Ietf`].
+pub struct Ietf;
+impl Variant for Ietf {
+    const VAR: Variants = Variants::Ietf;
 }

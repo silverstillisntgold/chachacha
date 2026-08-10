@@ -1,92 +1,41 @@
-use super::soft::Soft;
-use super::{BUF_SIZE_U128, Vector, VectorOps};
-use crate::util::Row;
-#[cfg(target_arch = "x86")]
-use core::arch::x86::*;
-#[cfg(target_arch = "x86_64")]
-use core::arch::x86_64::*;
-use core::ops::{Add, BitOr, BitXor};
+// #[cfg(target_arch = "x86")]
+// use core::arch::x86 as arch;
+// #[cfg(target_arch = "x86_64")]
+// use core::arch::x86_64 as arch;
 
-#[derive(Clone, Copy)]
-pub struct SSE2;
+use crate::{
+    backends::soft::Soft,
+    chacha::ChaChaCore,
+    util::{BATCH_BYTES, Backend, Variant},
+};
+// use arch::{
+//     __m128i, _mm_add_epi32, _mm_add_epi64, _mm_loadu_si128, _mm_or_si128, _mm_set_epi64x,
+//     _mm_setr_epi32, _mm_shuffle_epi32, _mm_slli_epi32, _mm_srli_epi32, _mm_storeu_si128,
+//     _mm_xor_si128,
+// };
 
-impl Add for Vector<SSE2> {
-    type Output = Self;
-
-    #[inline(always)]
-    fn add(mut self, rhs: Self) -> Self::Output {
-        unsafe {
-            for i in 0..BUF_SIZE_U128 {
-                self.u128x4[i] = _mm_add_epi32(self.u128x4[i], rhs.u128x4[i]);
-            }
-            self
-        }
-    }
+pub struct Sse2 {
+    // row_a: Vector,
+    // row_b: Vector,
+    // row_c: Vector,
+    // row_d0: Vector,
+    // row_d1: Vector,
+    inner: Soft,
 }
 
-impl BitOr for Vector<SSE2> {
-    type Output = Self;
-
+impl Backend for Sse2 {
     #[inline(always)]
-    fn bitor(mut self, rhs: Self) -> Self::Output {
-        unsafe {
-            for i in 0..BUF_SIZE_U128 {
-                self.u128x4[i] = _mm_or_si128(self.u128x4[i], rhs.u128x4[i]);
-            }
-            self
-        }
-    }
-}
-
-impl BitXor for Vector<SSE2> {
-    type Output = Self;
-
-    #[inline(always)]
-    fn bitxor(mut self, rhs: Self) -> Self::Output {
-        unsafe {
-            for i in 0..BUF_SIZE_U128 {
-                self.u128x4[i] = _mm_xor_si128(self.u128x4[i], rhs.u128x4[i]);
-            }
-            self
-        }
-    }
-}
-
-impl VectorOps for Vector<SSE2> {
-    #[inline(always)]
-    fn broadcast_row(value: Row) -> Self {
-        Vector::<Soft>::broadcast_row(value).cast()
-    }
-
-    #[inline(always)]
-    fn shift_left<const K: i32>(mut self) -> Self {
-        unsafe {
-            let count = _mm_set1_epi64x(K as i64);
-            for i in 0..BUF_SIZE_U128 {
-                self.u128x4[i] = _mm_sll_epi32(self.u128x4[i], count);
-            }
-            self
+    fn new<B: Backend, const ROUNDS: usize, V: Variant>(core: &ChaChaCore<B, ROUNDS, V>) -> Self {
+        Self {
+            inner: Soft::new(core),
         }
     }
 
     #[inline(always)]
-    fn shift_right<const K: i32>(mut self) -> Self {
-        unsafe {
-            let count = _mm_set1_epi64x(K as i64);
-            for i in 0..BUF_SIZE_U128 {
-                self.u128x4[i] = _mm_srl_epi32(self.u128x4[i], count);
-            }
-            self
-        }
-    }
-
-    #[inline(always)]
-    fn shuffle_internal<const MASK: i32>(mut self) -> Self {
-        unsafe {
-            for i in 0..BUF_SIZE_U128 {
-                self.u128x4[i] = _mm_shuffle_epi32::<MASK>(self.u128x4[i]);
-            }
-            self
-        }
+    fn fill<B: Backend, const ROUNDS: usize, V: Variant, const XOR: bool>(
+        &mut self,
+        buffer: &mut [u8; BATCH_BYTES],
+    ) {
+        self.inner.fill::<Soft, ROUNDS, V, XOR>(buffer);
     }
 }
