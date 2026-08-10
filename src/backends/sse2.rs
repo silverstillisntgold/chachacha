@@ -2,15 +2,14 @@
 use core::arch::x86 as arch;
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64 as arch;
-use core::arch::x86_64::_mm_set_epi32;
 
 use crate::{
     chacha::ChaChaCore,
     util::{BATCH_BYTES, BLOCKS, Backend, ROW_A, Variant, Variants},
 };
 use arch::{
-    __m128i, _mm_add_epi32, _mm_add_epi64, _mm_or_si128, _mm_set_epi64x, _mm_shuffle_epi32,
-    _mm_slli_epi32, _mm_srli_epi32, _mm_xor_si128,
+    __m128i, _mm_add_epi32, _mm_add_epi64, _mm_or_si128, _mm_set_epi32, _mm_set_epi64x,
+    _mm_shuffle_epi32, _mm_slli_epi32, _mm_srli_epi32, _mm_xor_si128,
 };
 
 pub struct Sse2 {

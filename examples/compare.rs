@@ -15,6 +15,10 @@ fn main() {
     println!("time: {:.4}", delta);
     println!("GB/s: {:.4}", SIZE as f64 / delta / 1e9);
 
+    let mut tmp = [0; _];
+    c1.fill_exact(&mut tmp);
+    core::hint::black_box(tmp);
+
     let mut c2 = chachacha_042::ChaCha8Djb::from(buf);
     let start = Instant::now();
     c2.fill(&mut buffer);

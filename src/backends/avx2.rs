@@ -170,51 +170,31 @@ fn add_xor_rotate(
     d1: &mut __m256i,
 ) {
     unsafe {
-        // a += b
         *a0 = _mm256_add_epi32(*a0, *b0);
         *a1 = _mm256_add_epi32(*a1, *b1);
-
-        // d ^= a
         *d0 = _mm256_xor_si256(*d0, *a0);
         *d1 = _mm256_xor_si256(*d1, *a1);
-
-        // d <<<= 16
         *d0 = _mm256_or_si256(_mm256_slli_epi32::<16>(*d0), _mm256_srli_epi32::<16>(*d0));
         *d1 = _mm256_or_si256(_mm256_slli_epi32::<16>(*d1), _mm256_srli_epi32::<16>(*d1));
 
-        // c += d
         *c0 = _mm256_add_epi32(*c0, *d0);
         *c1 = _mm256_add_epi32(*c1, *d1);
-
-        // b ^= c
         *b0 = _mm256_xor_si256(*b0, *c0);
         *b1 = _mm256_xor_si256(*b1, *c1);
-
-        // b <<<= 12
         *b0 = _mm256_or_si256(_mm256_slli_epi32::<12>(*b0), _mm256_srli_epi32::<20>(*b0));
         *b1 = _mm256_or_si256(_mm256_slli_epi32::<12>(*b1), _mm256_srli_epi32::<20>(*b1));
 
-        // a += b
         *a0 = _mm256_add_epi32(*a0, *b0);
         *a1 = _mm256_add_epi32(*a1, *b1);
-
-        // d ^= a
         *d0 = _mm256_xor_si256(*d0, *a0);
         *d1 = _mm256_xor_si256(*d1, *a1);
-
-        // d <<<= 8
         *d0 = _mm256_or_si256(_mm256_slli_epi32::<8>(*d0), _mm256_srli_epi32::<24>(*d0));
         *d1 = _mm256_or_si256(_mm256_slli_epi32::<8>(*d1), _mm256_srli_epi32::<24>(*d1));
 
-        // c += d
         *c0 = _mm256_add_epi32(*c0, *d0);
         *c1 = _mm256_add_epi32(*c1, *d1);
-
-        // b ^= c
         *b0 = _mm256_xor_si256(*b0, *c0);
         *b1 = _mm256_xor_si256(*b1, *c1);
-
-        // b <<<= 7
         *b0 = _mm256_or_si256(_mm256_slli_epi32::<7>(*b0), _mm256_srli_epi32::<25>(*b0));
         *b1 = _mm256_or_si256(_mm256_slli_epi32::<7>(*b1), _mm256_srli_epi32::<25>(*b1));
     }
@@ -230,17 +210,10 @@ fn rows_to_cols(
     d1: &mut __m256i,
 ) {
     unsafe {
-        // A: rotate right by one u32.
         *a0 = _mm256_shuffle_epi32::<0x93>(*a0);
         *a1 = _mm256_shuffle_epi32::<0x93>(*a1);
-
-        // B remains unchanged.
-
-        // C: rotate left by one u32.
         *c0 = _mm256_shuffle_epi32::<0x39>(*c0);
         *c1 = _mm256_shuffle_epi32::<0x39>(*c1);
-
-        // D: rotate left by two u32s.
         *d0 = _mm256_shuffle_epi32::<0x4e>(*d0);
         *d1 = _mm256_shuffle_epi32::<0x4e>(*d1);
     }
@@ -256,17 +229,10 @@ fn cols_to_rows(
     d1: &mut __m256i,
 ) {
     unsafe {
-        // Undo A's right-one rotation with a left-one rotation.
         *a0 = _mm256_shuffle_epi32::<0x39>(*a0);
         *a1 = _mm256_shuffle_epi32::<0x39>(*a1);
-
-        // B remains unchanged.
-
-        // Undo C's left-one rotation with a right-one rotation.
         *c0 = _mm256_shuffle_epi32::<0x93>(*c0);
         *c1 = _mm256_shuffle_epi32::<0x93>(*c1);
-
-        // A rotation by two is its own inverse.
         *d0 = _mm256_shuffle_epi32::<0x4e>(*d0);
         *d1 = _mm256_shuffle_epi32::<0x4e>(*d1);
     }

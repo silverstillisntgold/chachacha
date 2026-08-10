@@ -267,9 +267,7 @@ mod tests {
         let mut buf_ref = [0; 4096];
 
         for i in 0..TEST_ITERS {
-            // We iterate in reverse to fill the upper bits of `buf` and `buf_ref`
-            // with garbage. We expect the garbage in both of them to be the same.
-            for &length in TEST_LENGTHS.iter().rev() {
+            for &length in TEST_LENGTHS {
                 getrandom::fill(&mut seed).unwrap();
                 // The difference between the djb/ietf variants is only apparent
                 // when index 12 crosses the `u32::MAX` threshold, since that's the

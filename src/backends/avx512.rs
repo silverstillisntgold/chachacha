@@ -156,40 +156,20 @@ fn double_rounds<const ROUNDS: usize>(
 #[inline(always)]
 fn add_xor_rotate(a: &mut __m512i, b: &mut __m512i, c: &mut __m512i, d: &mut __m512i) {
     unsafe {
-        // a += b
         *a = _mm512_add_epi32(*a, *b);
-
-        // d ^= a
         *d = _mm512_xor_si512(*d, *a);
-
-        // d <<<= 16
         *d = _mm512_rol_epi32::<16>(*d);
 
-        // c += d
         *c = _mm512_add_epi32(*c, *d);
-
-        // b ^= c
         *b = _mm512_xor_si512(*b, *c);
-
-        // b <<<= 12
         *b = _mm512_rol_epi32::<12>(*b);
 
-        // a += b
         *a = _mm512_add_epi32(*a, *b);
-
-        // d ^= a
         *d = _mm512_xor_si512(*d, *a);
-
-        // d <<<= 8
         *d = _mm512_rol_epi32::<8>(*d);
 
-        // c += d
         *c = _mm512_add_epi32(*c, *d);
-
-        // b ^= c
         *b = _mm512_xor_si512(*b, *c);
-
-        // b <<<= 7
         *b = _mm512_rol_epi32::<7>(*b);
     }
 }
@@ -197,15 +177,8 @@ fn add_xor_rotate(a: &mut __m512i, b: &mut __m512i, c: &mut __m512i, d: &mut __m
 #[inline(always)]
 fn rows_to_cols(a: &mut __m512i, c: &mut __m512i, d: &mut __m512i) {
     unsafe {
-        // A: rotate right by one u32.
         *a = _mm512_shuffle_epi32::<0x93>(*a);
-
-        // B remains unchanged.
-
-        // C: rotate left by one u32.
         *c = _mm512_shuffle_epi32::<0x39>(*c);
-
-        // D: rotate left by two u32s.
         *d = _mm512_shuffle_epi32::<0x4e>(*d);
     }
 }
@@ -213,15 +186,8 @@ fn rows_to_cols(a: &mut __m512i, c: &mut __m512i, d: &mut __m512i) {
 #[inline(always)]
 fn cols_to_rows(a: &mut __m512i, c: &mut __m512i, d: &mut __m512i) {
     unsafe {
-        // Undo A's right-one rotation with a left-one rotation.
         *a = _mm512_shuffle_epi32::<0x39>(*a);
-
-        // B remains unchanged.
-
-        // Undo C's left-one rotation with a right-one rotation.
         *c = _mm512_shuffle_epi32::<0x93>(*c);
-
-        // A rotation by two is its own inverse.
         *d = _mm512_shuffle_epi32::<0x4e>(*d);
     }
 }

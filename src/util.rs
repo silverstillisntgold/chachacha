@@ -1,7 +1,7 @@
 #[cfg(target_arch = "x86")]
-use core::arch::x86::__m128i;
+use core::arch::x86 as arch;
 #[cfg(target_arch = "x86_64")]
-use core::arch::x86_64::__m128i;
+use core::arch::x86_64 as arch;
 
 use crate::chacha::ChaChaCore;
 
@@ -24,16 +24,13 @@ pub const ROW_A: Row = Row {
     u8x16: *b"expand 32-byte k",
 };
 
-/// Trait which represents an implementation for a specific hardware architecture.
+/// Types which represent an implementation for a specific hardware architecture.
 pub trait Backend: Sized {
-    /// Creates a new instance of [`Self`], which is used for holding
+    /// Creates a new instance of [`Self`], which is used for storing
     /// initial state and tracking the running counter.
     fn new<B: Backend, const ROUNDS: usize, V: Variant>(core: &ChaChaCore<B, ROUNDS, V>) -> Self;
 
     /// Fills `buffer` with the output stream of `self`.
-    ///
-    /// TODO: When rust gets full const-generics it might be benefical to
-    /// specialize the length of `buffer` to better optimize specific backends.
     fn fill<B: Backend, const ROUNDS: usize, V: Variant, const XOR: bool>(
         &mut self,
         buffer: &mut [u8; BATCH_BYTES],
@@ -56,9 +53,10 @@ pub union Row {
     pub u64x2: [u64; 2],
     // Useful in x86 backends.
     #[cfg(target_feature = "sse2")]
-    pub u128x1: __m128i,
+    pub u128x1: arch::__m128i,
 }
 
+/// Variants of the ChaCha stream cipher.
 pub enum Variants {
     /// Original variant proposed by the author of the salsa
     /// and chacha algorithms: Daniel J. Bernstein.
@@ -68,6 +66,7 @@ pub enum Variants {
     Ietf,
 }
 
+/// Trait-level representation of [`Variants`].
 pub trait Variant {
     const VAR: Variants;
 }
