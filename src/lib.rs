@@ -77,8 +77,15 @@ mod tests {
     use crate::{backends::*, chacha::ChaChaCore, chacha_reference::ChaCha as ChaChaRef, util::*};
     use core::mem::transmute;
 
-    const BUFFER_LEN: usize = (1 << 12) + 7;
-    const TEST_COUNT: usize = 1 << 6;
+    const TEST_ITERS: usize = 1 << 4;
+    const TEST_LENGTHS: &[usize] = &[
+        0, 1, 2, 3, 4, 63, 64, 65, 127, 128, 129, 191, 192, 193, 255, 256, 257, 319, 320, 321, 383,
+        384, 385, 447, 448, 449, 511, 512, 513, 575, 576, 577, 639, 640, 641, 703, 704, 705, 767,
+        768, 769, 831, 832, 833, 895, 896, 897, 959, 960, 961, 1023, 1024, 1025, 1087, 1088, 1089,
+        1151, 1152, 1153, 1215, 1216, 1217, 1279, 1280, 1281, 1343, 1344, 1345, 1407, 1408, 1409,
+        1471, 1472, 1473, 1535, 1536, 1537, 1599, 1600, 1601, 1663, 1664, 1665, 1727, 1728, 1729,
+        1791, 1792, 1793, 1855, 1856, 1857, 1919, 1920, 1921, 1983, 1984, 1985, 2047, 2048, 2049,
+    ];
 
     #[cfg(target_feature = "neon")]
     #[test]
@@ -256,29 +263,47 @@ mod tests {
 
     fn test_chacha<B: Backend, const ROUNDS: usize, V: Variant>() {
         let mut seed = [0; 48];
-        let mut buf = [0; BUFFER_LEN];
-        let mut buf_ref = [0; BUFFER_LEN];
+        let mut buf = [0; 4096];
+        let mut buf_ref = [0; 4096];
 
-        for i in 0..TEST_COUNT {
-            getrandom::fill(&mut seed).unwrap();
-            // The difference between the djb/ietf variants is only apparent
-            // when index 12 crosses the `u32::MAX` threshold, since that's the
-            // point where ietf would only wrap index 12 around to 0, but the
-            // djb variant would also increment index 13.
-            if i >= (TEST_COUNT / 2) {
-                let seed_ref: &mut [u32; 12] = unsafe { transmute(&mut seed) };
-                seed_ref[8] = u32::MAX - 7;
+        for i in 0..TEST_ITERS {
+            // We iterate in reverse to fill the upper bits of `buf` and `buf_ref`
+            // with garbage. We expect the garbage in both of them to be the same.
+            for &length in TEST_LENGTHS.iter().rev() {
+                getrandom::fill(&mut seed).unwrap();
+                // The difference between the djb/ietf variants is only apparent
+                // when index 12 crosses the `u32::MAX` threshold, since that's the
+                // point where ietf would only wrap index 12 around to 0, but the
+                // djb variant would also increment index 13.
+                if i.is_multiple_of(2) {
+                    let seed_ref: &mut [u32; 12] = unsafe { transmute(&mut seed) };
+                    seed_ref[8] = match i % 8 {
+                        0 => u32::MAX,
+                        2 => u32::MAX - 1,
+                        4 => u32::MAX - 2,
+                        6 => u32::MAX - 3,
+                        _ => unreachable!(),
+                    };
+                }
+
+                // We want to test filling a buffer from the output stream of ChaCha
+                // and we want to test XORing a buffer's contents with the output stream.
+                //
+                // So we fill each buffer, then XOR its contents with the output stream.
+
+                let buf = &mut buf[..length];
+                let buf_ref = &mut buf_ref[..length];
+                let mut chacha = ChaChaCore::<B, ROUNDS, V>::from_bytes(seed);
+                let mut chacha_ref = ChaChaRef::<ROUNDS, V>::from(seed);
+
+                chacha.fill(buf);
+                chacha_ref.fill(buf_ref);
+                assert_eq!(buf, buf_ref);
+
+                chacha.apply_keystream(buf);
+                chacha_ref.apply_keystream(buf_ref);
+                assert_eq!(buf, buf_ref);
             }
-
-            let mut chacha = ChaChaCore::<B, ROUNDS, V>::from_bytes(seed);
-            chacha.fill(&mut buf);
-            chacha.apply_keystream(&mut buf);
-
-            let mut chacha_ref = ChaChaRef::<ROUNDS, V>::from(seed);
-            chacha_ref.fill(&mut buf_ref);
-            chacha_ref.apply_keystream(&mut buf_ref);
-
-            assert_eq!(buf, buf_ref);
         }
     }
 }

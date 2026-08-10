@@ -68,7 +68,7 @@ where
         unsafe { transmute(bytes) }
     }
 
-    /// Xors the entirety of `buffer` with output from `self`.
+    /// XORs the entirety of `buffer` with output from `self`.
     #[inline(never)]
     pub fn apply_keystream(&mut self, buffer: &mut [u8]) {
         self.inner::<true>(buffer);

@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 #[cfg(target_arch = "x86")]
 use core::arch::x86 as arch;
 #[cfg(target_arch = "x86_64")]
