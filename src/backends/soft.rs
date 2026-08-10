@@ -1,6 +1,6 @@
 use crate::{
     chacha::ChaChaCore,
-    util::{BATCH_BYTES, BLOCKS, Backend, MATRIX_SIZE, ROW_A, Row, SIZE, Variant, Variants},
+    util::{BATCH_BYTES, BLOCKS, Backend, ROW_A, Row, SIZE, Variant, Variants},
 };
 
 #[derive(Clone, Copy)]
