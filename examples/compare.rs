@@ -12,8 +12,9 @@ fn main() {
     let start = Instant::now();
     c1.fill(&mut buffer);
     let delta = start.elapsed().as_secs_f64();
-    println!("time: {:.4}", delta);
-    println!("GB/s: {:.4}", SIZE as f64 / delta / 1e9);
+    println!("Current implementation:");
+    println!("  time: {:.4}", delta);
+    println!("  GB/s: {:.4}", SIZE as f64 / delta / 1e9);
 
     let mut tmp = [0; _];
     c1.fill_exact(&mut tmp);
@@ -23,20 +24,24 @@ fn main() {
     let start = Instant::now();
     c2.fill(&mut buffer);
     let delta = start.elapsed().as_secs_f64();
-    println!("time: {:.4}", delta);
-    println!("GB/s: {:.4}", SIZE as f64 / delta / 1e9);
+    println!("Previous implementation:");
+    println!("  time: {:.4}", delta);
+    println!("  GB/s: {:.4}", SIZE as f64 / delta / 1e9);
 
     let mut c3 = chacha20::ChaCha8Rng::from_rng(&mut rand::rng());
     let start = Instant::now();
     c3.fill_bytes(&mut buffer);
     let delta = start.elapsed().as_secs_f64();
-    println!("time: {:.4}", delta);
-    println!("GB/s: {:.4}", SIZE as f64 / delta / 1e9);
+    println!("ChaCha20 library:");
+    println!("  time: {:.4}", delta);
+    println!("  GB/s: {:.4}", SIZE as f64 / delta / 1e9);
 
     let mut c4 = rand_chacha::ChaCha8Rng::from_rng(&mut rand::rng());
     let start = Instant::now();
     c4.fill_bytes(&mut buffer);
     let delta = start.elapsed().as_secs_f64();
-    println!("time: {:.4}", delta);
-    println!("GB/s: {:.4}", SIZE as f64 / delta / 1e9);
+    println!("Rand ChaCha library:");
+    println!("  time: {:.4}", delta);
+    println!("  GB/s: {:.4}", SIZE as f64 / delta / 1e9);
+    println!();
 }
