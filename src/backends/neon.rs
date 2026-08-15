@@ -3,16 +3,94 @@ use crate::{
     util::{BATCH_BYTES, BLOCKS, Backend, ROW_A, Row, Variant, Variants},
 };
 use core::arch::aarch64::{
-    uint32x4_t, uint64x2_t, vaddq_u32, vaddq_u64, veorq_u32, vextq_u32, vshrq_n_u32, vsliq_n_u32,
+    uint32x4_t, uint32x4x4_t, uint64x2_t, uint64x2x4_t, vaddq_u32, vaddq_u64, veorq_u32, vextq_u32,
+    vorrq_u32, vshlq_n_u32, vshrq_n_u32,
 };
 
 const VECTOR_WIDTH: usize = BATCH_BYTES / size_of::<NeonRow>();
 
 #[derive(Clone, Copy)]
-#[repr(C, align(64))]
 union NeonRow {
-    u32: [uint32x4_t; BLOCKS],
-    u64: [uint64x2_t; BLOCKS],
+    u32: uint32x4x4_t,
+    u64: uint64x2x4_t,
+}
+
+impl NeonRow {
+    #[inline(always)]
+    fn add_epi32(&mut self, other: Self) {
+        unsafe {
+            self.u32.0 = vaddq_u32(self.u32.0, other.u32.0);
+            self.u32.1 = vaddq_u32(self.u32.1, other.u32.1);
+            self.u32.2 = vaddq_u32(self.u32.2, other.u32.2);
+            self.u32.3 = vaddq_u32(self.u32.3, other.u32.3);
+        }
+    }
+
+    #[inline(always)]
+    fn add_epi64(&mut self, other: Self) {
+        unsafe {
+            self.u64.0 = vaddq_u64(self.u64.0, other.u64.0);
+            self.u64.1 = vaddq_u64(self.u64.1, other.u64.1);
+            self.u64.2 = vaddq_u64(self.u64.2, other.u64.2);
+            self.u64.3 = vaddq_u64(self.u64.3, other.u64.3);
+        }
+    }
+
+    #[inline(always)]
+    fn broadcast_u32(value: uint32x4_t) -> Self {
+        Self {
+            u32: uint32x4x4_t(value, value, value, value),
+        }
+    }
+
+    #[inline(always)]
+    fn broadcast_u64(value: uint64x2_t) -> Self {
+        Self {
+            u64: uint64x2x4_t(value, value, value, value),
+        }
+    }
+
+    #[inline(always)]
+    fn rotl_epi32<const LEFT: i32, const RIGHT: i32>(&mut self) {
+        unsafe {
+            self.u32.0 = vorrq_u32(
+                vshlq_n_u32::<LEFT>(self.u32.0),
+                vshrq_n_u32::<RIGHT>(self.u32.0),
+            );
+            self.u32.1 = vorrq_u32(
+                vshlq_n_u32::<LEFT>(self.u32.1),
+                vshrq_n_u32::<RIGHT>(self.u32.1),
+            );
+            self.u32.2 = vorrq_u32(
+                vshlq_n_u32::<LEFT>(self.u32.2),
+                vshrq_n_u32::<RIGHT>(self.u32.2),
+            );
+            self.u32.3 = vorrq_u32(
+                vshlq_n_u32::<LEFT>(self.u32.3),
+                vshrq_n_u32::<RIGHT>(self.u32.3),
+            );
+        }
+    }
+
+    #[inline(always)]
+    fn shuffle<const SHUFFLE: i32>(&mut self) {
+        unsafe {
+            self.u32.0 = vextq_u32::<SHUFFLE>(self.u32.0, self.u32.0);
+            self.u32.1 = vextq_u32::<SHUFFLE>(self.u32.1, self.u32.1);
+            self.u32.2 = vextq_u32::<SHUFFLE>(self.u32.2, self.u32.2);
+            self.u32.3 = vextq_u32::<SHUFFLE>(self.u32.3, self.u32.3);
+        }
+    }
+
+    #[inline(always)]
+    fn xor(&mut self, other: Self) {
+        unsafe {
+            self.u32.0 = veorq_u32(self.u32.0, other.u32.0);
+            self.u32.1 = veorq_u32(self.u32.1, other.u32.1);
+            self.u32.2 = veorq_u32(self.u32.2, other.u32.2);
+            self.u32.3 = veorq_u32(self.u32.3, other.u32.3);
+        }
+    }
 }
 
 pub struct Neon {
@@ -25,25 +103,50 @@ pub struct Neon {
 impl Backend for Neon {
     #[inline(never)]
     fn new<B: Backend, const ROUNDS: usize, V: Variant>(core: &ChaChaCore<B, ROUNDS, V>) -> Self {
-        let row_a = broadcast(ROW_A);
-        let row_b = broadcast(core.row_b);
-        let row_c = broadcast(core.row_c);
-        let row_d = match V::VAR {
-            Variants::Djb => add_epi64(
-                broadcast(core.row_d),
-                setr_epi64([[0, 0], [1, 0], [2, 0], [3, 0]]),
-            ),
-
-            Variants::Ietf => add_epi32(
-                broadcast(core.row_d),
-                setr_epi32([[0, 0, 0, 0], [1, 0, 0, 0], [2, 0, 0, 0], [3, 0, 0, 0]]),
-            ),
-        };
-        Self {
-            row_a,
-            row_b,
-            row_c,
-            row_d,
+        unsafe {
+            let row_a = NeonRow::broadcast_u32(ROW_A.u32x4_neon);
+            let row_b = NeonRow::broadcast_u32(core.row_b.u32x4_neon);
+            let row_c = NeonRow::broadcast_u32(core.row_c.u32x4_neon);
+            let row_d = match V::VAR {
+                Variants::Djb => {
+                    let mut d1 = core.row_d;
+                    d1.u64x2[0] = d1.u64x2[0].wrapping_add(1);
+                    let mut d2 = core.row_d;
+                    d2.u64x2[0] = d2.u64x2[0].wrapping_add(2);
+                    let mut d3 = core.row_d;
+                    d3.u64x2[0] = d3.u64x2[0].wrapping_add(3);
+                    NeonRow {
+                        u64: uint64x2x4_t(
+                            core.row_d.u64x2_neon,
+                            d1.u64x2_neon,
+                            d2.u64x2_neon,
+                            d3.u64x2_neon,
+                        ),
+                    }
+                }
+                Variants::Ietf => {
+                    let mut d1 = core.row_d;
+                    d1.u32x4[0] = d1.u32x4[0].wrapping_add(1);
+                    let mut d2 = core.row_d;
+                    d2.u32x4[0] = d2.u32x4[0].wrapping_add(2);
+                    let mut d3 = core.row_d;
+                    d3.u32x4[0] = d3.u32x4[0].wrapping_add(3);
+                    NeonRow {
+                        u32: uint32x4x4_t(
+                            core.row_d.u32x4_neon,
+                            d1.u32x4_neon,
+                            d2.u32x4_neon,
+                            d3.u32x4_neon,
+                        ),
+                    }
+                }
+            };
+            Self {
+                row_a,
+                row_b,
+                row_c,
+                row_d,
+            }
         }
     }
 
@@ -60,33 +163,25 @@ impl Backend for Neon {
 
             double_rounds::<ROUNDS>(&mut a, &mut b, &mut c, &mut d);
 
-            a = add_epi32(a, self.row_a);
-            b = add_epi32(b, self.row_b);
-            c = add_epi32(c, self.row_c);
-            d = add_epi32(d, self.row_d);
+            a.add_epi32(self.row_a);
+            b.add_epi32(self.row_b);
+            c.add_epi32(self.row_c);
+            d.add_epi32(self.row_d);
 
             match V::VAR {
                 Variants::Djb => {
-                    self.row_d = add_epi64(
-                        self.row_d,
-                        setr_epi64([
-                            [BLOCKS as u64, 0],
-                            [BLOCKS as u64, 0],
-                            [BLOCKS as u64, 0],
-                            [BLOCKS as u64, 0],
-                        ]),
-                    );
+                    let increment = Row {
+                        u64x2: [BLOCKS as u64, 0],
+                    };
+                    self.row_d
+                        .add_epi64(NeonRow::broadcast_u64(increment.u64x2_neon));
                 }
                 Variants::Ietf => {
-                    self.row_d = add_epi32(
-                        self.row_d,
-                        setr_epi32([
-                            [BLOCKS as u32, 0, 0, 0],
-                            [BLOCKS as u32, 0, 0, 0],
-                            [BLOCKS as u32, 0, 0, 0],
-                            [BLOCKS as u32, 0, 0, 0],
-                        ]),
-                    );
+                    let increment = Row {
+                        u32x4: [BLOCKS as u32, 0, 0, 0],
+                    };
+                    self.row_d
+                        .add_epi32(NeonRow::broadcast_u32(increment.u32x4_neon));
                 }
             }
 
@@ -106,141 +201,20 @@ impl Backend for Neon {
 }
 
 #[inline(always)]
-fn broadcast(row: Row) -> NeonRow {
-    let row = unsafe { core::mem::transmute(row.u32x4) };
-    NeonRow { u32: [row; BLOCKS] }
-}
-
-#[inline(always)]
-fn setr_epi32(values: [[u32; 4]; BLOCKS]) -> NeonRow {
-    unsafe {
-        NeonRow {
-            u32: [
-                core::mem::transmute(values[0]),
-                core::mem::transmute(values[1]),
-                core::mem::transmute(values[2]),
-                core::mem::transmute(values[3]),
-            ],
-        }
-    }
-}
-
-#[inline(always)]
-fn setr_epi64(values: [[u64; 2]; BLOCKS]) -> NeonRow {
-    unsafe {
-        NeonRow {
-            u64: [
-                core::mem::transmute(values[0]),
-                core::mem::transmute(values[1]),
-                core::mem::transmute(values[2]),
-                core::mem::transmute(values[3]),
-            ],
-        }
-    }
-}
-
-#[inline(always)]
-fn add_epi32(a: NeonRow, b: NeonRow) -> NeonRow {
-    unsafe {
-        let a = a.u32;
-        let b = b.u32;
-        NeonRow {
-            u32: [
-                vaddq_u32(a[0], b[0]),
-                vaddq_u32(a[1], b[1]),
-                vaddq_u32(a[2], b[2]),
-                vaddq_u32(a[3], b[3]),
-            ],
-        }
-    }
-}
-
-#[inline(always)]
-fn add_epi64(a: NeonRow, b: NeonRow) -> NeonRow {
-    unsafe {
-        let a = a.u64;
-        let b = b.u64;
-        NeonRow {
-            u64: [
-                vaddq_u64(a[0], b[0]),
-                vaddq_u64(a[1], b[1]),
-                vaddq_u64(a[2], b[2]),
-                vaddq_u64(a[3], b[3]),
-            ],
-        }
-    }
-}
-
-#[inline(always)]
-fn xor(a: NeonRow, b: NeonRow) -> NeonRow {
-    unsafe {
-        let a = a.u32;
-        let b = b.u32;
-        NeonRow {
-            u32: [
-                veorq_u32(a[0], b[0]),
-                veorq_u32(a[1], b[1]),
-                veorq_u32(a[2], b[2]),
-                veorq_u32(a[3], b[3]),
-            ],
-        }
-    }
-}
-
-#[inline(always)]
-fn rol_lane<const LEFT: i32, const RIGHT: i32>(value: uint32x4_t) -> uint32x4_t {
-    unsafe { vsliq_n_u32::<LEFT>(vshrq_n_u32::<RIGHT>(value), value) }
-}
-
-#[inline(always)]
-fn rol_epi32<const LEFT: i32, const RIGHT: i32>(value: NeonRow) -> NeonRow {
-    unsafe {
-        let value = value.u32;
-        NeonRow {
-            u32: [
-                rol_lane::<LEFT, RIGHT>(value[0]),
-                rol_lane::<LEFT, RIGHT>(value[1]),
-                rol_lane::<LEFT, RIGHT>(value[2]),
-                rol_lane::<LEFT, RIGHT>(value[3]),
-            ],
-        }
-    }
-}
-
-#[inline(always)]
-fn shuffle<const OFFSET: i32>(value: NeonRow) -> NeonRow {
-    unsafe {
-        let value = value.u32;
-        NeonRow {
-            u32: [
-                vextq_u32::<OFFSET>(value[0], value[0]),
-                vextq_u32::<OFFSET>(value[1], value[1]),
-                vextq_u32::<OFFSET>(value[2], value[2]),
-                vextq_u32::<OFFSET>(value[3], value[3]),
-            ],
-        }
-    }
-}
-
-#[inline(always)]
 fn permute_blocks(a: NeonRow, b: NeonRow, c: NeonRow, d: NeonRow) -> [NeonRow; VECTOR_WIDTH] {
     unsafe {
-        let a = a.u32;
-        let b = b.u32;
-        let c = c.u32;
-        let d = d.u32;
         [
             NeonRow {
-                u32: [a[0], b[0], c[0], d[0]],
+                u32: uint32x4x4_t(a.u32.0, b.u32.0, c.u32.0, d.u32.0),
             },
             NeonRow {
-                u32: [a[1], b[1], c[1], d[1]],
+                u32: uint32x4x4_t(a.u32.1, b.u32.1, c.u32.1, d.u32.1),
             },
             NeonRow {
-                u32: [a[2], b[2], c[2], d[2]],
+                u32: uint32x4x4_t(a.u32.2, b.u32.2, c.u32.2, d.u32.2),
             },
             NeonRow {
-                u32: [a[3], b[3], c[3], d[3]],
+                u32: uint32x4x4_t(a.u32.3, b.u32.3, c.u32.3, d.u32.3),
             },
         ]
     }
@@ -263,33 +237,33 @@ fn double_rounds<const ROUNDS: usize>(
 
 #[inline(always)]
 fn add_xor_rotate(a: &mut NeonRow, b: &mut NeonRow, c: &mut NeonRow, d: &mut NeonRow) {
-    *a = add_epi32(*a, *b);
-    *d = xor(*d, *a);
-    *d = rol_epi32::<16, 16>(*d);
+    a.add_epi32(*b);
+    d.xor(*a);
+    d.rotl_epi32::<16, 16>();
 
-    *c = add_epi32(*c, *d);
-    *b = xor(*b, *c);
-    *b = rol_epi32::<12, 20>(*b);
+    c.add_epi32(*d);
+    b.xor(*c);
+    b.rotl_epi32::<12, 20>();
 
-    *a = add_epi32(*a, *b);
-    *d = xor(*d, *a);
-    *d = rol_epi32::<8, 24>(*d);
+    a.add_epi32(*b);
+    d.xor(*a);
+    d.rotl_epi32::<8, 24>();
 
-    *c = add_epi32(*c, *d);
-    *b = xor(*b, *c);
-    *b = rol_epi32::<7, 25>(*b);
+    c.add_epi32(*d);
+    b.xor(*c);
+    b.rotl_epi32::<7, 25>();
 }
 
 #[inline(always)]
 fn rows_to_cols(a: &mut NeonRow, c: &mut NeonRow, d: &mut NeonRow) {
-    *a = shuffle::<3>(*a);
-    *c = shuffle::<1>(*c);
-    *d = shuffle::<2>(*d);
+    a.shuffle::<3>();
+    c.shuffle::<1>();
+    d.shuffle::<2>();
 }
 
 #[inline(always)]
 fn cols_to_rows(a: &mut NeonRow, c: &mut NeonRow, d: &mut NeonRow) {
-    *a = shuffle::<1>(*a);
-    *c = shuffle::<3>(*c);
-    *d = shuffle::<2>(*d);
+    a.shuffle::<1>();
+    c.shuffle::<3>();
+    d.shuffle::<2>();
 }

@@ -51,9 +51,16 @@ pub union Row {
     pub u16x8: [u16; 8],
     pub u32x4: [u32; 4],
     pub u64x2: [u64; 2],
-    // Useful in x86 backends.
+
+    // Used in x86 backends.
     #[cfg(target_feature = "sse2")]
     pub u128x1: arch::__m128i,
+
+    // Used in neon backend.
+    #[cfg(target_feature = "neon")]
+    pub u32x4_neon: core::arch::aarch64::uint32x4_t,
+    #[cfg(target_feature = "neon")]
+    pub u64x2_neon: core::arch::aarch64::uint64x2_t,
 }
 
 /// Variants of the ChaCha stream cipher.

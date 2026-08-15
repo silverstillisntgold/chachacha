@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments, unused)]
+
 #[cfg(target_feature = "avx2")]
 pub mod avx2;
 #[cfg(target_feature = "avx512f")]

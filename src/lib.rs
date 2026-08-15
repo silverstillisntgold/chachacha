@@ -24,7 +24,7 @@ assert!(!all_zeros);
 [`ya-rand`]: https://crates.io/crates/ya-rand
 */
 
-//#![deny(missing_docs)]
+#![deny(missing_docs)]
 #![no_std]
 
 // The reference implementation is only used for testing the vectorized implementations
