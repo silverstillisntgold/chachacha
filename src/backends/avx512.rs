@@ -122,7 +122,7 @@ impl Backend for Avx512 {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn permute_blocks(a: __m512i, b: __m512i, c: __m512i, d: __m512i) -> [__m512i; VECTOR_WIDTH] {
     unsafe {
         let ab01 = _mm512_shuffle_i32x4::<0x44>(a, b);
@@ -138,7 +138,7 @@ fn permute_blocks(a: __m512i, b: __m512i, c: __m512i, d: __m512i) -> [__m512i; V
     }
 }
 
-#[inline(always)]
+#[inline]
 fn double_rounds<const ROUNDS: usize>(
     a: &mut __m512i,
     b: &mut __m512i,
@@ -153,7 +153,7 @@ fn double_rounds<const ROUNDS: usize>(
     }
 }
 
-#[inline(always)]
+#[inline]
 fn add_xor_rotate(a: &mut __m512i, b: &mut __m512i, c: &mut __m512i, d: &mut __m512i) {
     unsafe {
         *a = _mm512_add_epi32(*a, *b);
@@ -174,7 +174,7 @@ fn add_xor_rotate(a: &mut __m512i, b: &mut __m512i, c: &mut __m512i, d: &mut __m
     }
 }
 
-#[inline(always)]
+#[inline]
 fn rows_to_cols(a: &mut __m512i, c: &mut __m512i, d: &mut __m512i) {
     unsafe {
         *a = _mm512_shuffle_epi32::<0x93>(*a);
@@ -183,7 +183,7 @@ fn rows_to_cols(a: &mut __m512i, c: &mut __m512i, d: &mut __m512i) {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn cols_to_rows(a: &mut __m512i, c: &mut __m512i, d: &mut __m512i) {
     unsafe {
         *a = _mm512_shuffle_epi32::<0x39>(*a);

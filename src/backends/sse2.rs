@@ -139,7 +139,7 @@ impl Backend for Sse2 {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn double_rounds<const ROUNDS: usize>(
     a0: &mut __m128i,
     b0: &mut __m128i,
@@ -170,7 +170,7 @@ fn double_rounds<const ROUNDS: usize>(
     }
 }
 
-#[inline(always)]
+#[inline]
 fn add_xor_rotate(
     a0: &mut __m128i,
     b0: &mut __m128i,
@@ -191,60 +191,72 @@ fn add_xor_rotate(
 ) {
     unsafe {
         *a0 = _mm_add_epi32(*a0, *b0);
-        *a1 = _mm_add_epi32(*a1, *b1);
-        *a2 = _mm_add_epi32(*a2, *b2);
-        *a3 = _mm_add_epi32(*a3, *b3);
         *d0 = _mm_xor_si128(*d0, *a0);
-        *d1 = _mm_xor_si128(*d1, *a1);
-        *d2 = _mm_xor_si128(*d2, *a2);
-        *d3 = _mm_xor_si128(*d3, *a3);
         *d0 = _mm_or_si128(_mm_slli_epi32::<16>(*d0), _mm_srli_epi32::<16>(*d0));
+
+        *a1 = _mm_add_epi32(*a1, *b1);
+        *d1 = _mm_xor_si128(*d1, *a1);
         *d1 = _mm_or_si128(_mm_slli_epi32::<16>(*d1), _mm_srli_epi32::<16>(*d1));
+
+        *a2 = _mm_add_epi32(*a2, *b2);
+        *d2 = _mm_xor_si128(*d2, *a2);
         *d2 = _mm_or_si128(_mm_slli_epi32::<16>(*d2), _mm_srli_epi32::<16>(*d2));
+
+        *a3 = _mm_add_epi32(*a3, *b3);
+        *d3 = _mm_xor_si128(*d3, *a3);
         *d3 = _mm_or_si128(_mm_slli_epi32::<16>(*d3), _mm_srli_epi32::<16>(*d3));
 
         *c0 = _mm_add_epi32(*c0, *d0);
-        *c1 = _mm_add_epi32(*c1, *d1);
-        *c2 = _mm_add_epi32(*c2, *d2);
-        *c3 = _mm_add_epi32(*c3, *d3);
         *b0 = _mm_xor_si128(*b0, *c0);
-        *b1 = _mm_xor_si128(*b1, *c1);
-        *b2 = _mm_xor_si128(*b2, *c2);
-        *b3 = _mm_xor_si128(*b3, *c3);
         *b0 = _mm_or_si128(_mm_slli_epi32::<12>(*b0), _mm_srli_epi32::<20>(*b0));
+
+        *c1 = _mm_add_epi32(*c1, *d1);
+        *b1 = _mm_xor_si128(*b1, *c1);
         *b1 = _mm_or_si128(_mm_slli_epi32::<12>(*b1), _mm_srli_epi32::<20>(*b1));
+
+        *c2 = _mm_add_epi32(*c2, *d2);
+        *b2 = _mm_xor_si128(*b2, *c2);
         *b2 = _mm_or_si128(_mm_slli_epi32::<12>(*b2), _mm_srli_epi32::<20>(*b2));
+
+        *c3 = _mm_add_epi32(*c3, *d3);
+        *b3 = _mm_xor_si128(*b3, *c3);
         *b3 = _mm_or_si128(_mm_slli_epi32::<12>(*b3), _mm_srli_epi32::<20>(*b3));
 
         *a0 = _mm_add_epi32(*a0, *b0);
-        *a1 = _mm_add_epi32(*a1, *b1);
-        *a2 = _mm_add_epi32(*a2, *b2);
-        *a3 = _mm_add_epi32(*a3, *b3);
         *d0 = _mm_xor_si128(*d0, *a0);
-        *d1 = _mm_xor_si128(*d1, *a1);
-        *d2 = _mm_xor_si128(*d2, *a2);
-        *d3 = _mm_xor_si128(*d3, *a3);
         *d0 = _mm_or_si128(_mm_slli_epi32::<8>(*d0), _mm_srli_epi32::<24>(*d0));
+
+        *a1 = _mm_add_epi32(*a1, *b1);
+        *d1 = _mm_xor_si128(*d1, *a1);
         *d1 = _mm_or_si128(_mm_slli_epi32::<8>(*d1), _mm_srli_epi32::<24>(*d1));
+
+        *a2 = _mm_add_epi32(*a2, *b2);
+        *d2 = _mm_xor_si128(*d2, *a2);
         *d2 = _mm_or_si128(_mm_slli_epi32::<8>(*d2), _mm_srli_epi32::<24>(*d2));
+
+        *a3 = _mm_add_epi32(*a3, *b3);
+        *d3 = _mm_xor_si128(*d3, *a3);
         *d3 = _mm_or_si128(_mm_slli_epi32::<8>(*d3), _mm_srli_epi32::<24>(*d3));
 
         *c0 = _mm_add_epi32(*c0, *d0);
-        *c1 = _mm_add_epi32(*c1, *d1);
-        *c2 = _mm_add_epi32(*c2, *d2);
-        *c3 = _mm_add_epi32(*c3, *d3);
         *b0 = _mm_xor_si128(*b0, *c0);
-        *b1 = _mm_xor_si128(*b1, *c1);
-        *b2 = _mm_xor_si128(*b2, *c2);
-        *b3 = _mm_xor_si128(*b3, *c3);
         *b0 = _mm_or_si128(_mm_slli_epi32::<7>(*b0), _mm_srli_epi32::<25>(*b0));
+
+        *c1 = _mm_add_epi32(*c1, *d1);
+        *b1 = _mm_xor_si128(*b1, *c1);
         *b1 = _mm_or_si128(_mm_slli_epi32::<7>(*b1), _mm_srli_epi32::<25>(*b1));
+
+        *c2 = _mm_add_epi32(*c2, *d2);
+        *b2 = _mm_xor_si128(*b2, *c2);
         *b2 = _mm_or_si128(_mm_slli_epi32::<7>(*b2), _mm_srli_epi32::<25>(*b2));
+
+        *c3 = _mm_add_epi32(*c3, *d3);
+        *b3 = _mm_xor_si128(*b3, *c3);
         *b3 = _mm_or_si128(_mm_slli_epi32::<7>(*b3), _mm_srli_epi32::<25>(*b3));
     }
 }
 
-#[inline(always)]
+#[inline]
 fn rows_to_cols(
     a0: &mut __m128i,
     c0: &mut __m128i,
@@ -261,23 +273,24 @@ fn rows_to_cols(
 ) {
     unsafe {
         *a0 = _mm_shuffle_epi32::<0x93>(*a0);
-        *a1 = _mm_shuffle_epi32::<0x93>(*a1);
-        *a2 = _mm_shuffle_epi32::<0x93>(*a2);
-        *a3 = _mm_shuffle_epi32::<0x93>(*a3);
-
         *c0 = _mm_shuffle_epi32::<0x39>(*c0);
-        *c1 = _mm_shuffle_epi32::<0x39>(*c1);
-        *c2 = _mm_shuffle_epi32::<0x39>(*c2);
-        *c3 = _mm_shuffle_epi32::<0x39>(*c3);
-
         *d0 = _mm_shuffle_epi32::<0x4e>(*d0);
+
+        *a1 = _mm_shuffle_epi32::<0x93>(*a1);
+        *c1 = _mm_shuffle_epi32::<0x39>(*c1);
         *d1 = _mm_shuffle_epi32::<0x4e>(*d1);
+
+        *a2 = _mm_shuffle_epi32::<0x93>(*a2);
+        *c2 = _mm_shuffle_epi32::<0x39>(*c2);
         *d2 = _mm_shuffle_epi32::<0x4e>(*d2);
+
+        *a3 = _mm_shuffle_epi32::<0x93>(*a3);
+        *c3 = _mm_shuffle_epi32::<0x39>(*c3);
         *d3 = _mm_shuffle_epi32::<0x4e>(*d3);
     }
 }
 
-#[inline(always)]
+#[inline]
 fn cols_to_rows(
     a0: &mut __m128i,
     c0: &mut __m128i,
@@ -294,18 +307,19 @@ fn cols_to_rows(
 ) {
     unsafe {
         *a0 = _mm_shuffle_epi32::<0x39>(*a0);
-        *a1 = _mm_shuffle_epi32::<0x39>(*a1);
-        *a2 = _mm_shuffle_epi32::<0x39>(*a2);
-        *a3 = _mm_shuffle_epi32::<0x39>(*a3);
-
         *c0 = _mm_shuffle_epi32::<0x93>(*c0);
-        *c1 = _mm_shuffle_epi32::<0x93>(*c1);
-        *c2 = _mm_shuffle_epi32::<0x93>(*c2);
-        *c3 = _mm_shuffle_epi32::<0x93>(*c3);
-
         *d0 = _mm_shuffle_epi32::<0x4e>(*d0);
+
+        *a1 = _mm_shuffle_epi32::<0x39>(*a1);
+        *c1 = _mm_shuffle_epi32::<0x93>(*c1);
         *d1 = _mm_shuffle_epi32::<0x4e>(*d1);
+
+        *a2 = _mm_shuffle_epi32::<0x39>(*a2);
+        *c2 = _mm_shuffle_epi32::<0x93>(*c2);
         *d2 = _mm_shuffle_epi32::<0x4e>(*d2);
+
+        *a3 = _mm_shuffle_epi32::<0x39>(*a3);
+        *c3 = _mm_shuffle_epi32::<0x93>(*c3);
         *d3 = _mm_shuffle_epi32::<0x4e>(*d3);
     }
 }

@@ -11,7 +11,7 @@ union InternalMatrix {
 }
 
 impl InternalMatrix {
-    #[inline(always)]
+    #[inline]
     fn increment<const INCREMENT: usize, V: Variant>(&mut self) {
         const {
             assert!(INCREMENT <= u32::MAX as usize);
@@ -24,7 +24,7 @@ impl InternalMatrix {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn add(&mut self, other: Self) {
         unsafe {
             for (s, o) in self.u32x16.iter_mut().zip(other.u32x16) {
@@ -33,7 +33,7 @@ impl InternalMatrix {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn quarter_round(&mut self, a: usize, b: usize, c: usize, d: usize) {
         unsafe {
             self.u32x16[a] = self.u32x16[a].wrapping_add(self.u32x16[b]);
@@ -61,21 +61,21 @@ pub struct Soft {
 }
 
 impl Soft {
-    #[inline(always)]
+    #[inline]
     fn increment<const INCREMENT: usize, V: Variant>(&mut self) {
         for s in self.inner.iter_mut() {
             s.increment::<INCREMENT, V>();
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn add(&mut self, other: Self) {
         for (s, o) in self.inner.iter_mut().zip(other.inner) {
             s.add(o);
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn quarter_round(&mut self, a: usize, b: usize, c: usize, d: usize) {
         for internal_matrix in self.inner.iter_mut() {
             internal_matrix.quarter_round(a, b, c, d);

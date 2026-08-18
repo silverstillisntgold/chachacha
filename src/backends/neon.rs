@@ -16,7 +16,7 @@ union NeonRow {
 }
 
 impl NeonRow {
-    #[inline(always)]
+    #[inline]
     fn add_epi32(&mut self, other: Self) {
         unsafe {
             self.u32.0 = vaddq_u32(self.u32.0, other.u32.0);
@@ -26,7 +26,7 @@ impl NeonRow {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn add_epi64(&mut self, other: Self) {
         unsafe {
             self.u64.0 = vaddq_u64(self.u64.0, other.u64.0);
@@ -36,21 +36,21 @@ impl NeonRow {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn broadcast_u32(value: uint32x4_t) -> Self {
         Self {
             u32: uint32x4x4_t(value, value, value, value),
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn broadcast_u64(value: uint64x2_t) -> Self {
         Self {
             u64: uint64x2x4_t(value, value, value, value),
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn rotl_epi32<const LEFT: i32, const RIGHT: i32>(&mut self) {
         unsafe {
             self.u32.0 = vorrq_u32(
@@ -72,7 +72,7 @@ impl NeonRow {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn shuffle<const SHUFFLE: i32>(&mut self) {
         unsafe {
             self.u32.0 = vextq_u32::<SHUFFLE>(self.u32.0, self.u32.0);
@@ -82,7 +82,7 @@ impl NeonRow {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn xor(&mut self, other: Self) {
         unsafe {
             self.u32.0 = veorq_u32(self.u32.0, other.u32.0);
@@ -200,7 +200,7 @@ impl Backend for Neon {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn permute_blocks(a: NeonRow, b: NeonRow, c: NeonRow, d: NeonRow) -> [NeonRow; VECTOR_WIDTH] {
     unsafe {
         [
@@ -220,7 +220,7 @@ fn permute_blocks(a: NeonRow, b: NeonRow, c: NeonRow, d: NeonRow) -> [NeonRow; V
     }
 }
 
-#[inline(always)]
+#[inline]
 fn double_rounds<const ROUNDS: usize>(
     a: &mut NeonRow,
     b: &mut NeonRow,
@@ -235,7 +235,7 @@ fn double_rounds<const ROUNDS: usize>(
     }
 }
 
-#[inline(always)]
+#[inline]
 fn add_xor_rotate(a: &mut NeonRow, b: &mut NeonRow, c: &mut NeonRow, d: &mut NeonRow) {
     a.add_epi32(*b);
     d.xor(*a);
@@ -254,14 +254,14 @@ fn add_xor_rotate(a: &mut NeonRow, b: &mut NeonRow, c: &mut NeonRow, d: &mut Neo
     b.rotl_epi32::<7, 25>();
 }
 
-#[inline(always)]
+#[inline]
 fn rows_to_cols(a: &mut NeonRow, c: &mut NeonRow, d: &mut NeonRow) {
     a.shuffle::<3>();
     c.shuffle::<1>();
     d.shuffle::<2>();
 }
 
-#[inline(always)]
+#[inline]
 fn cols_to_rows(a: &mut NeonRow, c: &mut NeonRow, d: &mut NeonRow) {
     a.shuffle::<1>();
     c.shuffle::<3>();

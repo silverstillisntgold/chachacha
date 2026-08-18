@@ -112,7 +112,7 @@ impl Backend for Avx2 {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn permute_blocks(
     a0: __m256i,
     b0: __m256i,
@@ -137,7 +137,7 @@ fn permute_blocks(
     }
 }
 
-#[inline(always)]
+#[inline]
 fn double_rounds<const ROUNDS: usize>(
     a0: &mut __m256i,
     b0: &mut __m256i,
@@ -156,7 +156,7 @@ fn double_rounds<const ROUNDS: usize>(
     }
 }
 
-#[inline(always)]
+#[inline]
 fn add_xor_rotate(
     a0: &mut __m256i,
     b0: &mut __m256i,
@@ -198,7 +198,7 @@ fn add_xor_rotate(
     }
 }
 
-#[inline(always)]
+#[inline]
 fn rows_to_cols(
     a0: &mut __m256i,
     c0: &mut __m256i,
@@ -217,7 +217,7 @@ fn rows_to_cols(
     }
 }
 
-#[inline(always)]
+#[inline]
 fn cols_to_rows(
     a0: &mut __m256i,
     c0: &mut __m256i,
