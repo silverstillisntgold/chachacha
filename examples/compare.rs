@@ -1,13 +1,13 @@
 use rand::{Rng, SeedableRng};
 use std::time::Instant;
 
-const SIZE: usize = 11 * (1 << 30) + 7;
+const SIZE: usize = 3 * (1 << 30) + 7;
 
 fn main() {
     let mut buf = [0; _];
     let mut buffer = vec![u8::MAX; SIZE];
 
-    for i in 1..=3 {
+    for i in 1..=2 {
         println!("Iteration #{}", i);
         getrandom::fill(&mut buf).unwrap();
 
