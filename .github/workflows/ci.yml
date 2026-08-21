@@ -24,25 +24,3 @@ jobs:
         run: cargo test --no-run
       - name: Run tests
         run: cargo test
-
-  macos:
-    name: macos
-    runs-on: macos-26
-    env:
-      RUSTFLAGS: -C target-cpu=apple-m2
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Update dependencies
-        run: cargo update
-      - name: Build example
-        run: cargo build --release --example compare
-      - name: Upload artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: compare
-          path: target/release/examples/compare
-          if-no-files-found: error
-          retention-days: 1

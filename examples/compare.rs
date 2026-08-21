@@ -1,13 +1,14 @@
 use rand::{Rng, SeedableRng};
 use std::time::Instant;
 
-const SIZE: usize = 3 * (1 << 30) + 7;
+const SIZE: usize = 5 * (1 << 30) + 5;
+const SIZE_GB: f64 = SIZE as f64 / 1e9;
 
 fn main() {
     let mut buf = [0; _];
     let mut buffer = vec![u8::MAX; SIZE];
 
-    for i in 1..=2 {
+    for i in 1..=3 {
         println!("Iteration #{}", i);
         getrandom::fill(&mut buf).unwrap();
 
@@ -17,7 +18,7 @@ fn main() {
         let delta = start.elapsed().as_secs_f64();
         println!("Current implementation:");
         println!("  time: {:.3} seconds", delta);
-        println!("  GB/s: {:.3}", SIZE as f64 / delta / 1e9);
+        println!("  GB/s: {:.3}", SIZE_GB / delta);
 
         let mut c2 = chachacha_042::ChaCha8Djb::from(buf);
         let start = Instant::now();
@@ -25,7 +26,7 @@ fn main() {
         let delta = start.elapsed().as_secs_f64();
         println!("Previous implementation:");
         println!("  time: {:.3} seconds", delta);
-        println!("  GB/s: {:.3}", SIZE as f64 / delta / 1e9);
+        println!("  GB/s: {:.3}", SIZE_GB / delta);
 
         let mut c3 = chacha20::ChaCha8Rng::from_rng(&mut rand::rng());
         let start = Instant::now();
@@ -33,7 +34,7 @@ fn main() {
         let delta = start.elapsed().as_secs_f64();
         println!("ChaCha20 library:");
         println!("  time: {:.3} seconds", delta);
-        println!("  GB/s: {:.3}", SIZE as f64 / delta / 1e9);
+        println!("  GB/s: {:.3}", SIZE_GB / delta);
 
         let mut c4 = rand_chacha::ChaCha8Rng::from_rng(&mut rand::rng());
         let start = Instant::now();
@@ -41,7 +42,7 @@ fn main() {
         let delta = start.elapsed().as_secs_f64();
         println!("RandChaCha library:");
         println!("  time: {:.3} seconds", delta);
-        println!("  GB/s: {:.3}", SIZE as f64 / delta / 1e9);
+        println!("  GB/s: {:.3}", SIZE_GB / delta);
         println!();
     }
 }

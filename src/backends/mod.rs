@@ -1,3 +1,9 @@
+/*!
+TODO: Explain shape of each hardware backend.
+
+This is where the magic happens.
+*/
+
 #![allow(clippy::too_many_arguments, unused)]
 
 #[cfg(target_feature = "avx2")]
