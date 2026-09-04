@@ -9,7 +9,7 @@ use crate::chacha::ChaChaCore;
 pub const COLUMNS: usize = 4;
 /// Rows in a reference ChaCha matrix.
 pub const ROWS: usize = 4;
-/// Size (in 32-bit ints) of a reference ChaCha matrix.
+/// Size (in 32-bit integers) of a reference ChaCha matrix.
 pub const SIZE: usize = COLUMNS * ROWS;
 /// Size (in bytes) of a reference ChaCha matrix.
 pub const MATRIX_SIZE: usize = SIZE * size_of::<u32>();

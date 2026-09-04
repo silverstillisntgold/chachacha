@@ -60,7 +60,7 @@ impl<B: Backend, const ROUNDS: usize> ChaChaCore<B, ROUNDS, Ietf> {
 }
 
 impl<B: Backend, const ROUNDS: usize, V: Variant> ChaChaCore<B, ROUNDS, V> {
-    /// Creates a new [`ChaChaCore`] instance from it's byte representation.
+    /// Creates a new instance of [`Self`] from it's byte representation.
     ///
     /// Unless you know that you need to use this, you shouldn't.
     pub fn from_bytes(bytes: [u8; 48]) -> Self {
