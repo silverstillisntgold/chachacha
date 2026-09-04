@@ -1,17 +1,25 @@
 /*!
 # ChaChaCha: ChaCha with a little extra Cha
 
-Extremely fast ChaCha implementation. Primarily made for use as a CRNG in the [`ya-rand`] crate,
-but should be just as usable anywhere else you might want to use ChaCha. This is intended to be
-a low-level primitive, and should generally not be used directly. When used as a cipher it should
-be paired with something like Poly1305, and when used as an RNG it's output should be consumed
-and fed to the user batches.
+Extremely fast (the fastest?) ChaCha implementation. Primarily made for use as a CRNG in the
+[`ya-rand`] crate, but should be just as usable anywhere else you might want to use ChaCha.
+
+This is as a low-level primitive, and should generally **not** be used directly.
+When used as a cipher it should be paired with something like Poly1305, and when used as an
+RNG it's output should be batched to amortize the cost of generating new entropy.
 
 [`ya-rand`]: https://crates.io/crates/ya-rand
 */
 
 #![forbid(missing_docs)]
 #![no_std]
+
+#[cfg(feature = "_internal")]
+pub use internal::{ChaChaDjb, ChaChaIetf};
+pub use util::BATCH_BYTES;
+
+#[cfg(not(feature = "_internal"))]
+use internal::{ChaChaDjb, ChaChaIetf};
 
 // The reference implementation is only used for testing the vectorized implementations
 // to ensure they're correct; don't bother compiling it when not testing.
@@ -39,13 +47,6 @@ mod internal {
     pub type ChaChaIetf<const ROUNDS: usize> = ChaChaCore<TargetMachine, ROUNDS, Ietf>;
 }
 
-#[cfg(feature = "_internal")]
-pub use internal::{ChaChaDjb, ChaChaIetf};
-#[cfg(not(feature = "_internal"))]
-use internal::{ChaChaDjb, ChaChaIetf};
-
-pub use util::BATCH_BYTES;
-
 /// ChaCha with 8 rounds, a 64-bit counter, and a 64-bit nonce.
 pub type ChaCha8Djb = ChaChaDjb<8>;
 /// ChaCha with 12 rounds, a 64-bit counter, and a 64-bit nonce.
@@ -63,9 +64,15 @@ pub type ChaCha20Ietf = ChaChaIetf<20>;
 #[cfg(test)]
 mod tests {
     use crate::{backends::*, chacha::ChaChaCore, chacha_reference::ChaCha as ChaChaRef, util::*};
-    use core::mem::transmute;
 
     const TEST_ITERS: usize = 1 << 4;
+    // Most important thing is to ensure the edge cases are handled properly.
+    //
+    // Lengths 0-4 cover the small cases.
+    //
+    // The remaining lengths are chosen to be powers of two up to 2^11 as well as their neighbors.
+    // The fill size of the backends are all 256, so this approach let's us test a bunch of exact divisors
+    // a well as those values plus their two extremes: only 1 additional value and 255 additional values.
     const TEST_LENGTHS: &[usize] = &[
         0, 1, 2, 3, 4, 63, 64, 65, 127, 128, 129, 191, 192, 193, 255, 256, 257, 319, 320, 321, 383,
         384, 385, 447, 448, 449, 511, 512, 513, 575, 576, 577, 639, 640, 641, 703, 704, 705, 767,
@@ -255,14 +262,16 @@ mod tests {
         let mut buf_ref = [0; 4096];
 
         for i in 0..TEST_ITERS {
-            for &length in TEST_LENGTHS {
+            // Iterating in reverse so we fill incrementally less of the buffers as
+            // the test progresses, leaving the remainding data in the upper bytes.
+            for &length in TEST_LENGTHS.iter().rev() {
                 getrandom::fill(&mut seed).unwrap();
                 // The difference between the djb/ietf variants is only apparent
                 // when index 12 crosses the `u32::MAX` threshold, since that's the
                 // point where ietf would only wrap index 12 around to 0, but the
                 // djb variant would also increment index 13.
                 if i.is_multiple_of(2) {
-                    let seed_ref: &mut [u32; 12] = unsafe { transmute(&mut seed) };
+                    let seed_ref: &mut [u32; 12] = unsafe { core::mem::transmute(&mut seed) };
                     seed_ref[8] = match i % 8 {
                         0 => u32::MAX,
                         2 => u32::MAX - 1,
@@ -272,22 +281,23 @@ mod tests {
                     };
                 }
 
+                let mut chacha = ChaChaCore::<B, ROUNDS, V>::from_bytes(seed);
+                let mut chacha_ref = ChaChaRef::<ROUNDS, V>::from(seed);
+
                 // We want to test filling a buffer from the output stream of ChaCha
                 // and we want to test XORing a buffer's contents with the output stream.
                 //
                 // So we fill each buffer, then XOR its contents with the output stream.
+                //
+                // Notice that we fill/XOR only up to `length`, but we compare the
+                // entirety of the buffers.
 
-                let buf = &mut buf[..length];
-                let buf_ref = &mut buf_ref[..length];
-                let mut chacha = ChaChaCore::<B, ROUNDS, V>::from_bytes(seed);
-                let mut chacha_ref = ChaChaRef::<ROUNDS, V>::from(seed);
-
-                chacha.fill(buf);
-                chacha_ref.fill(buf_ref);
+                chacha.fill(&mut buf[..length]);
+                chacha_ref.fill(&mut buf_ref[..length]);
                 assert_eq!(buf, buf_ref);
 
-                chacha.apply_keystream(buf);
-                chacha_ref.apply_keystream(buf_ref);
+                chacha.apply_keystream(&mut buf[..length]);
+                chacha_ref.apply_keystream(&mut buf_ref[..length]);
                 assert_eq!(buf, buf_ref);
             }
         }
